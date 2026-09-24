@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build app
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://mybnebyoxxokzexlwikp.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_pOqjGkXpadgrxXpTQq1JlA_lfyv1Ics
+          VITE_SUPABASE_FUNCTIONS_JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15Ym5lYnlveHhva3pleGx3aWtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNjU3OTIsImV4cCI6MjEwNTg0MTc5Mn0.CwC3iZNvfWjLa8X2KaFmZ0ex2A0qw8H1mqzqItfnEj8
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

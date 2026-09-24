@@ -10,7 +10,7 @@ const publicAuth = createClient(supabaseUrl, anonKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const allowedOrigins = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
+const allowedOrigins = new Set(['http://localhost:5173', 'http://127.0.0.1:5173', 'https://track.upstream.land']);
 const usernamePattern = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 
