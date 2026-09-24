@@ -1,14 +1,6 @@
-# Tuggle tracker
+# Little Days
 
-A lightweight, responsive task tracker built with React and Vite. Keep a clear view of today's priorities, upcoming work, and completed tasks.
-
-## Features
-
-- Add tasks and mark them complete
-- Filter by task status, project, or search text
-- Summary cards for open, due today, and completed tasks
-- Automatic browser-local persistence with `localStorage`
-- Responsive sidebar and layout for mobile screens
+A small, mobile-friendly baby tracker for everyday care. Log feeds, pumping sessions, diaper changes, and sleep, then review them together in the recent activity feed.
 
 ## Run locally
 
@@ -17,4 +9,8 @@ npm install
 npm run dev
 ```
 
-The app uses seeded sample tasks for its first visit. Task changes are saved in the current browser.
+Activity entries are saved in the current browser with `localStorage`.
+
+## UI
+
+Built with reusable shadcn-style components, Tailwind CSS, Radix Dialog, and Lucide icons. shadcn component configuration lives in `components.json`.

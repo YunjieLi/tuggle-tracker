@@ -1,86 +1,220 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Baby, Check, ChevronDown, Droplets, Milk, Moon, Sparkles, Waves } from 'lucide-react';
+import { Button } from './components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
 import './styles.css';
 
-const seed = [
-  { id: 1, title: 'Map out Q4 launch milestones', project: 'Website refresh', due: '2026-09-24', priority: 'High', done: false },
-  { id: 2, title: 'Review the first round of concepts', project: 'Brand direction', due: '2026-09-24', priority: 'Medium', done: false },
-  { id: 3, title: 'Send notes to the design team', project: 'Brand direction', due: '2026-09-25', priority: 'Low', done: false },
-  { id: 4, title: 'Pull together customer quotes', project: 'Website refresh', due: '2026-09-26', priority: 'Medium', done: false },
-  { id: 5, title: 'Set up kickoff with Alex', project: 'Content sprint', due: '2026-09-27', priority: 'Low', done: false },
-  { id: 6, title: 'Share the updated project brief', project: 'Content sprint', due: '2026-09-28', priority: 'High', done: true },
-];
-
-const icons = {
-  grid: <><rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><rect x="14" y="14" width="7" height="7" rx="1.4"/></>,
-  today: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></>,
-  check: <><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></>,
-  folder: <><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></>,
-  plus: <path d="M12 5v14M5 12h14"/>,
-  search: <><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4 4"/></>,
-  more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,
-  arrow: <><path d="M5 12h14M13 6l6 6-6 6"/></>,
-  sparkle: <><path d="m12 3 1.9 5.8L20 11l-6.1 2.1L12 19l-1.9-5.9L4 11l6.1-2.2L12 3z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></>,
+const STORAGE_KEY = 'little-days.activities.v1';
+const kinds = {
+  feed: { label: 'Feed', past: 'Fed', icon: Milk, tint: 'lavender', note: 'Feeding' },
+  pump: { label: 'Pump', past: 'Pumped', icon: Waves, tint: 'blue', note: 'Pumping' },
+  diaper: { label: 'Diaper', past: 'Changed diaper', icon: Droplets, tint: 'peach', note: 'Diapers' },
+  sleep: { label: 'Sleep', past: 'Sleep', icon: Moon, tint: 'sage', note: 'Sleep' },
 };
-function Icon({ name, size = 18 }) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icons[name]}</svg>; }
-const todayISO = '2026-09-23';
-const initialTasks = JSON.parse(localStorage.getItem('tuggle.tasks') || 'null') || seed;
+const ago = (mins) => new Date(Date.now() - mins * 60_000).toISOString();
+const initialActivities = [
+  { id: 'sample-1', kind: 'feed', at: ago(34), detail: 'Feed', formulaAmount: 60, breastmilkAmount: 30, breastfeeding: true },
+  { id: 'sample-2', kind: 'diaper', at: ago(92), detail: 'Wet diaper', amount: '' },
+  { id: 'sample-3', kind: 'sleep', at: ago(158), detail: 'Nap', amount: '1 hr 12 min' },
+  { id: 'sample-4', kind: 'pump', at: ago(241), detail: 'Pumping session', amount: 120 },
+];
+function getSavedActivities() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || initialActivities; }
+  catch { return initialActivities; }
+}
+
+function ActivityIcon({ kind, size = 19 }) {
+  const Icon = kinds[kind].icon;
+  return <span className={`activity-icon ${kinds[kind].tint}`}><Icon size={size} strokeWidth={1.8} /></span>;
+}
+
+function timeAgo(date) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 60_000));
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ago`;
+  return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function getTimeSlot(date = new Date()) {
+  const rounded = new Date(date);
+  rounded.setMinutes(Math.floor(rounded.getMinutes() / 10) * 10, 0, 0);
+  return `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
+}
+
+function localDateValue(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function activityDateAtTime(dateValue, value) {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  const [hours, minutes] = value.split(':').map(Number);
+  const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
+  return date.toISOString();
+}
+
+function AmountStepper({ label, value, onChange }) {
+  const numericValue = value === '' ? null : Number(value);
+  return <div className="amount-field">
+    <span className="amount-label">{label}</span>
+    <div className="amount-stepper">
+      <button type="button" aria-label={`Decrease ${label.toLowerCase()}`} disabled={numericValue === null || numericValue <= 0} onClick={() => onChange(String(Math.max(0, (numericValue || 0) - 5)))}>−</button>
+      <input type="number" min="0" step="5" inputMode="numeric" readOnly aria-label={`${label} in milliliters`} value={value} placeholder="0" />
+      <span className="amount-unit">ml</span>
+      <button type="button" aria-label={`Increase ${label.toLowerCase()}`} onClick={() => onChange(String((numericValue || 0) + 5))}>+</button>
+    </div>
+  </div>;
+}
+
+function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, lastFeed }) {
+  const [detail, setDetail] = useState('');
+  const [amount, setAmount] = useState('');
+  const [amounts, setAmounts] = useState({ formulaAmount: '', breastmilkAmount: '' });
+  const [breastfeeding, setBreastfeeding] = useState(false);
+  const [time, setTime] = useState(() => getTimeSlot());
+  const [date, setDate] = useState(() => localDateValue());
+  const [error, setError] = useState('');
+  const config = kind ? kinds[kind] : null;
+  useEffect(() => {
+    if (!open) return;
+    setTime(activity ? getTimeSlot(new Date(activity.at)) : getTimeSlot());
+    setDate(activity ? localDateValue(new Date(activity.at)) : localDateValue());
+    setError('');
+    setDetail(kind === 'diaper' ? (activity?.detail?.startsWith('Wet') ? 'Wet' : activity?.detail?.startsWith('Poop') ? 'Poop' : activity?.detail === 'Both' ? 'Both' : '') : (activity?.detail ?? ''));
+    setAmount(activity?.amount == null ? '' : String(activity.amount));
+    if (kind === 'feed') {
+      setBreastfeeding(Boolean(activity?.breastfeeding ?? lastFeed?.breastfeeding));
+      setAmounts({
+        formulaAmount: (activity?.formulaAmount ?? lastFeed?.formulaAmount) == null ? '' : String(activity?.formulaAmount ?? lastFeed?.formulaAmount),
+        breastmilkAmount: (activity?.breastmilkAmount ?? lastFeed?.breastmilkAmount) == null ? '' : String(activity?.breastmilkAmount ?? lastFeed?.breastmilkAmount),
+      });
+    }
+  }, [open, kind, activity, lastFeed]);
+  const at = activityDateAtTime(date, time);
+  const submit = (event) => {
+    event.preventDefault();
+    if (kind === 'feed') {
+      const parsed = Object.fromEntries(Object.entries(amounts).map(([key, value]) => [key, value === '' ? null : Number(value)]));
+      if (!Object.values(parsed).some(value => value !== null && value > 0)) {
+        setError('Add at least one amount to save this feed.');
+        return;
+      }
+      onSave({ id: activity?.id, kind, at, detail: 'Feed', breastfeeding, ...parsed });
+    } else if (kind === 'pump') {
+      onSave({ id: activity?.id, kind, at, detail: 'Pumping session', amount: amount === '' ? null : Number(amount) });
+    } else if (kind === 'diaper') {
+      onSave({ id: activity?.id, kind, at, detail: detail || 'Wet' });
+    } else if (kind === 'sleep') {
+      onSave({ id: activity?.id, kind, at, detail: detail.trim() || 'Sleep', amount: amount.trim() });
+    }
+  };
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+    {config && <DialogContent className="activity-sheet-content">
+      <DialogHeader>
+        <ActivityIcon kind={kind} size={20} />
+        <DialogTitle>{activity ? 'Edit' : 'Log'} {config.label.toLowerCase()}</DialogTitle>
+      </DialogHeader>
+      <form className="activity-form" onSubmit={submit}>
+        <label>Date<input type="date" value={date} onChange={e => setDate(e.target.value)} required /></label>
+        <label>Time<input type="time" step="600" value={time} onChange={e => setTime(e.target.value)} required /></label>
+        {kind === 'feed' && <div className="feed-amounts">
+          <AmountStepper label="Formula" value={amounts.formulaAmount} onChange={value => setAmounts(current => ({ ...current, formulaAmount: value }))} />
+          <AmountStepper label="Breastmilk" value={amounts.breastmilkAmount} onChange={value => setAmounts(current => ({ ...current, breastmilkAmount: value }))} />
+          <button type="button" role="switch" aria-checked={breastfeeding} className={`breastfeeding-toggle ${breastfeeding ? 'on' : ''}`} onClick={() => setBreastfeeding(value => !value)}><span>Breastfeeding</span><span className="toggle-track"><span /></span></button>
+          {error && <span className="form-error" role="alert">{error}</span>}
+        </div>}
+        {kind === 'pump' && <AmountStepper label="Amount" value={amount} onChange={setAmount} />}
+        {kind === 'diaper' && <div className="diaper-segment" role="group" aria-label="Diaper type">
+          {['Wet', 'Poop', 'Both'].map(option => <button key={option} type="button" aria-pressed={detail === option} className={detail === option ? 'selected' : ''} onClick={() => setDetail(option)}>{option}</button>)}
+        </div>}
+        {kind === 'sleep' && <>
+          <label>Sleep note <span className="optional">optional</span><input value={detail} onChange={e => setDetail(e.target.value)} placeholder="Nap, bedtime…" /></label>
+          <label>Duration <span className="optional">optional</span><input value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 45 min" /></label>
+        </>}
+        <DialogFooter>{activity && <Button type="button" variant="outline" className="delete-record" onClick={() => onDelete(activity.id)}>Delete</Button>}<div className="dialog-actions"><Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit">{activity ? 'Save' : 'Save'} {config.label.toLowerCase()}</Button></div></DialogFooter>
+      </form>
+    </DialogContent>}
+  </Dialog>;
+}
+
+function defaultDetail(kind) {
+  return { feed: 'Nursed', pump: 'Pumping session', diaper: 'Diaper changed', sleep: 'Sleep' }[kind];
+}
+
+function activitySubtitle(activity) {
+  if (activity.kind === 'feed') {
+    return [
+      activity.formulaAmount != null && `Formula ${activity.formulaAmount} ml`,
+      activity.breastmilkAmount != null && `Breastmilk ${activity.breastmilkAmount} ml`,
+    ].filter(Boolean).join(' · ');
+  }
+  if (activity.kind === 'pump') return activity.amount != null ? `${activity.amount} ml` : 'Pumping session';
+  return activity.detail + (activity.amount ? ` · ${activity.amount}` : '');
+}
 
 function App() {
-  const [tasks, setTasks] = useState(initialTasks);
-  const [view, setView] = useState('All tasks');
-  const [query, setQuery] = useState('');
-  const [showComposer, setShowComposer] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [activeProject, setActiveProject] = useState('All projects');
+  const [activities, setActivities] = useState(getSavedActivities);
+  const [activeKind, setActiveKind] = useState(null);
+  const [editingActivity, setEditingActivity] = useState(null);
   const [toast, setToast] = useState('');
-  const persist = (next) => { setTasks(next); localStorage.setItem('tuggle.tasks', JSON.stringify(next)); };
-  const complete = tasks.filter(t => t.done).length;
-  const projects = [...new Set(tasks.map(t => t.project))];
-  const visible = useMemo(() => tasks.filter(t => {
-    const matchView = view === 'All tasks' || (view === 'Today' && t.due === todayISO) || (view === 'Upcoming' && t.due > todayISO) || (view === 'Completed' && t.done) || (view === 'In progress' && !t.done);
-    const matchQuery = `${t.title} ${t.project}`.toLowerCase().includes(query.toLowerCase());
-    return matchView && matchQuery && (activeProject === 'All projects' || t.project === activeProject);
-  }), [tasks, view, query, activeProject]);
-  const addTask = (event) => {
-    event.preventDefault();
-    if (!draft.trim()) return;
-    persist([{ id: Date.now(), title: draft.trim(), project: activeProject === 'All projects' ? 'Personal' : activeProject, due: todayISO, priority: 'Medium', done: false }, ...tasks]);
-    setDraft(''); setShowComposer(false); setToast('Task added to your list'); setTimeout(() => setToast(''), 2400);
+  const lastFeed = useMemo(() => activities.filter(item => item.kind === 'feed').sort((a, b) => new Date(b.at) - new Date(a.at))[0], [activities]);
+  const visibleActivities = useMemo(() => [...activities].sort((a, b) => new Date(b.at) - new Date(a.at)), [activities]);
+  const recent = visibleActivities;
+  const logActivity = (activity) => {
+    const next = activity.id
+      ? activities.map(item => item.id === activity.id ? activity : item)
+      : [{ ...activity, id: crypto.randomUUID() }, ...activities];
+    setActivities(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setActiveKind(null);
+    setEditingActivity(null);
+    setToast(`${kinds[activity.kind].label} ${activity.id ? 'updated' : 'logged'}`);
+    window.setTimeout(() => setToast(''), 2200);
   };
-  const toggle = id => persist(tasks.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const navigation = [{ name: 'All tasks', icon: 'grid', count: tasks.filter(t => !t.done).length }, { name: 'Today', icon: 'today', count: tasks.filter(t => t.due === todayISO && !t.done).length }, { name: 'Upcoming', icon: 'check' }, { name: 'Completed', icon: 'check', count: complete }];
+  const removeActivity = (id) => {
+    const next = activities.filter(item => item.id !== id);
+    setActivities(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setEditingActivity(null);
+  };
 
   return <div className="app-shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-mark"><span></span><span></span><span></span></div><span>Tuggle</span></div>
-      <div className="workspace-switch"><div className="workspace-avatar">Y</div><div className="workspace-copy"><strong>Yunjie’s space</strong><small>Personal workspace</small></div><span className="chevron">⌄</span></div>
-      <button className="new-task" onClick={() => setShowComposer(true)}><Icon name="plus" size={17}/> New task <kbd>N</kbd></button>
-      <div className="side-label">WORKSPACE</div>
-      <nav className="nav-list">{navigation.map(item => <button key={item.name} onClick={() => { setView(item.name); setActiveProject('All projects'); }} className={`nav-item ${view === item.name ? 'selected' : ''}`}><Icon name={item.icon}/><span>{item.name}</span>{item.count !== undefined && <small>{item.count}</small>}</button>)}</nav>
-      <div className="projects-heading"><span className="side-label">PROJECTS</span><button aria-label="Add project" onClick={() => { setToast('Create projects by adding a task'); setTimeout(() => setToast(''), 2400); }}><Icon name="plus" size={16}/></button></div>
-      <nav className="project-list">{projects.map((project, i) => <button className={`project-item ${activeProject === project ? 'project-active' : ''}`} key={project} onClick={() => { setActiveProject(activeProject === project ? 'All projects' : project); setView('All tasks'); }}><span className={`project-dot dot-${i % 4}`}></span>{project}<small>{tasks.filter(t => t.project === project && !t.done).length}</small></button>)}</nav>
-      <div className="sidebar-bottom"><div className="upgrade-card"><div className="upgrade-icon"><Icon name="sparkle" size={17}/></div><strong>A little more room?</strong><p>Make space for bigger plans with Tuggle Pro.</p><button onClick={() => { setToast('You’re on the early access list ✨'); setTimeout(() => setToast(''), 2400); }}>Explore Pro <Icon name="arrow" size={14}/></button></div><div className="user-profile"><div className="profile-avatar">Y</div><div><strong>Yunjie Li</strong><small>Free plan</small></div><Icon name="more" size={19}/></div></div>
-    </aside>
+    <header className="topbar">
+      <a className="brand" href="#top" aria-label="Little Days home"><span className="brand-mark"><Baby size={19} /></span><span>little days</span></a>
+      <Button variant="ghost" size="sm" className="baby-switch"><span className="baby-avatar">M</span><span>Milo</span><ChevronDown size={15} /></Button>
+    </header>
+    <main id="top" className="page-wrap">
+      <section className="quick-section" aria-labelledby="quick-heading">
+        <div className="section-heading"><h2 id="quick-heading">Quick actions</h2></div>
+        <div className="quick-grid">
+          {Object.entries(kinds).map(([kind, item]) => {
+            const Icon = item.icon;
+            return <Button key={kind} variant="outline" className={`quick-action ${item.tint}`} onClick={() => setActiveKind(kind)}>
+              <span className="quick-icon"><Icon size={21} strokeWidth={1.8}/></span><span className="quick-label">{item.label}</span>
+            </Button>;
+          })}
+        </div>
+      </section>
 
-    <main className="main-panel">
-      <header className="topbar"><div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{activeProject !== 'All projects' ? activeProject : view}</strong></div><div className="top-actions"><label className="search-box"><Icon name="search" size={17}/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search tasks..."/><kbd>⌘ K</kbd></label><button className="avatar-stack" title="Workspace members"><span>Y</span><i>+</i></button></div></header>
-      <div className="page-content">
-        <section className="welcome-row"><div><div className="date-line">WEDNESDAY, SEPTEMBER 23, 2026 <span className="sun">☀</span></div><h1>{view === 'Today' ? 'A good day to get things done.' : 'Make room for what matters.'}</h1><p>A little progress each day adds up to big results.</p></div><button className="primary-button" onClick={() => setShowComposer(true)}><Icon name="plus" size={17}/> Add a task</button></section>
-        <section className="stats-grid"><div className="stat-card"><div className="stat-top"><span>Open tasks</span><span className="stat-icon lilac"><Icon name="grid" size={16}/></span></div><strong>{tasks.length - complete}</strong><small><span className="green-trend">↗ 2</span> from last week</small><div className="mini-bars">{[25,39,32,49,43,66,56,76,62,82,69,94].map((h,i)=><i key={i} style={{height:`${h}%`}} className={i===11?'bar-current':''}></i>)}</div></div>
-          <div className="stat-card"><div className="stat-top"><span>Due today</span><span className="stat-icon peach"><Icon name="today" size={16}/></span></div><strong>{tasks.filter(t => t.due === todayISO && !t.done).length}</strong><small>Keep your focus on today</small><div className="progress-track"><i style={{width:`${Math.min(100, tasks.filter(t => t.due === todayISO && t.done).length * 30)}%`}}></i></div></div>
-          <div className="stat-card"><div className="stat-top"><span>Completed</span><span className="stat-icon mint"><Icon name="check" size={16}/></span></div><strong>{complete}<small className="out-of"> / {tasks.length}</small></strong><small>Look at you go. Keep it up!</small><div className="progress-track mint-track"><i style={{width:`${tasks.length ? (complete / tasks.length) * 100 : 0}%`}}></i></div></div>
-        </section>
-        <section className="focus-banner"><div className="focus-art"><span>✳</span><i></i><b></b></div><div className="focus-copy"><span className="eyebrow">YOUR DAILY FOCUS</span><strong>Small steps, steady momentum.</strong><p>You have <b>{tasks.filter(t => t.due === todayISO && !t.done).length} tasks</b> on your list for today. You’ve got this.</p></div><button onClick={() => setView('Today')}>See today’s tasks <Icon name="arrow" size={16}/></button><div className="banner-orb"></div></section>
-        <section className="task-section"><div className="task-heading"><div><h2>{view === 'All tasks' ? 'Your tasks' : view}</h2><span>{visible.length} tasks to keep things moving</span></div><div className="task-tools"><select value={activeProject} onChange={e => setActiveProject(e.target.value)} aria-label="Filter by project"><option>All projects</option>{projects.map(p=><option key={p}>{p}</option>)}</select><button className="filter-button" onClick={() => setView(view === 'In progress' ? 'All tasks' : 'In progress')}><span className="filter-bars">☷</span> {view === 'In progress' ? 'In progress' : 'Filter'}</button><button className="more-button" aria-label="More options"><Icon name="more"/></button></div></div>
-          <div className="task-list">{visible.map(task => <article className={`task-row ${task.done ? 'is-done' : ''}`} key={task.id}><button className={`task-check ${task.done ? 'checked' : ''}`} onClick={() => toggle(task.id)} aria-label={task.done ? 'Mark incomplete' : 'Complete task'}>{task.done && '✓'}</button><div className="task-info"><strong>{task.title}</strong><div className="task-meta"><span className="task-project"><i className={`project-dot dot-${projects.indexOf(task.project) % 4}`}></i>{task.project}</span><span className="meta-divider">·</span><span className={task.due === todayISO ? 'due-today' : ''}>{task.due === todayISO ? 'Today' : new Date(`${task.due}T12:00:00`).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</span></div></div><span className={`priority priority-${task.priority.toLowerCase()}`}><i></i>{task.priority}</span><button className="row-more" aria-label="Task options"><Icon name="more" size={18}/></button></article>)}{visible.length === 0 && <div className="empty-state"><div>✳</div><strong>Nothing on this list yet</strong><span>Enjoy the breathing room, or add a task to get started.</span><button onClick={() => setShowComposer(true)}>Add a task</button></div>}</div>
-          <button className="add-inline" onClick={() => setShowComposer(true)}><Icon name="plus" size={17}/> Add a task</button>
-        </section>
-        <footer className="footer-note"><span>Made for your next small win <b>✳</b></span><span>All changes saved automatically</span></footer>
-      </div>
+      <section className="quick-section recent-section" aria-labelledby="recent-heading">
+        <div className="section-heading"><h2 id="recent-heading">Recent activity</h2></div>
+        <div className="activity-list">
+            {recent.map((activity, index) => {
+              const item = kinds[activity.kind];
+              return <article className="activity-row" key={activity.id} role="button" tabIndex={0} onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
+                <ActivityIcon kind={activity.kind} />
+                {index < recent.length - 1 && <span className="timeline-line"/>}
+                <div className="activity-copy"><div className="activity-title"><strong>{item.past}</strong><span className="activity-time">{timeAgo(activity.at)}</span></div><div className="activity-detail">{activitySubtitle(activity)}</div></div>
+              </article>;
+            })}
+            {recent.length === 0 && <div className="empty-feed"><span className="empty-icon"><Sparkles size={19}/></span><strong>No activity yet</strong><Button variant="outline" size="sm" onClick={() => setActiveKind('feed')}>Log</Button></div>}
+        </div>
+      </section>
     </main>
-    {showComposer && <div className="modal-backdrop" onClick={() => setShowComposer(false)}><form className="task-modal" onSubmit={addTask} onClick={e => e.stopPropagation()}><div className="modal-kicker">NEW TASK</div><h2>What’s on your mind?</h2><input autoFocus value={draft} onChange={e => setDraft(e.target.value)} placeholder="Give your task a name..."/><div className="modal-controls"><span>◷ &nbsp;Today</span><span>↗ &nbsp;Medium priority</span><span>▦ &nbsp;{activeProject === 'All projects' ? 'Personal' : activeProject}</span></div><div className="modal-actions"><button type="button" onClick={() => setShowComposer(false)}>Cancel</button><button className="primary-button" type="submit"><Icon name="plus" size={16}/> Add task</button></div></form></div>}
-    {toast && <div className="toast">✳ &nbsp;{toast}</div>}
+    <ActivityDialog kind={activeKind || editingActivity?.kind} activity={editingActivity} open={Boolean(activeKind || editingActivity)} lastFeed={lastFeed} onOpenChange={(open) => { if (!open) { setActiveKind(null); setEditingActivity(null); } }} onSave={logActivity} onDelete={removeActivity}/>
+    {toast && <div className="toast" role="status"><Check size={16}/>{toast}</div>}
   </div>;
 }
 
