@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, Check, ChevronDown, Droplets, Milk, Moon, Sparkles, Waves } from 'lucide-react';
+import { Baby, Check, Droplets, Milk, Moon, Sparkles, Waves } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
+import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, sendPasswordReset, signInWithUsername, signUpWithUsername, supabase, updatePassword } from './lib/supabase';
 import './styles.css';
 
 const STORAGE_KEY = 'little-days.activities.v1';
@@ -22,6 +23,15 @@ const initialActivities = [
 function getSavedActivities() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || initialActivities; }
   catch { return initialActivities; }
+}
+
+function getStoredActivities(key = STORAGE_KEY) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
 }
 
 function ActivityIcon({ kind, size = 19 }) {
@@ -154,36 +164,237 @@ function activitySubtitle(activity) {
   return activity.detail + (activity.amount ? ` · ${activity.amount}` : '');
 }
 
+function AuthPanel({ recoveryMode, onPasswordUpdated }) {
+  const [mode, setMode] = useState(recoveryMode ? 'new-password' : 'sign-in');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (recoveryMode) setMode('new-password');
+  }, [recoveryMode]);
+
+  const submit = async event => {
+    event.preventDefault();
+    setError('');
+    setMessage('');
+    setBusy(true);
+    try {
+      if (mode === 'sign-in') {
+        await signInWithUsername(username.trim(), password);
+      } else if (mode === 'sign-up') {
+        if (password !== confirmPassword) throw new Error('Passwords do not match.');
+        await signUpWithUsername(username.trim(), email.trim(), password);
+      } else if (mode === 'reset') {
+        await sendPasswordReset(username.trim());
+        setMessage('If that user ID exists, reset instructions were sent.');
+      } else {
+        if (password !== confirmPassword) throw new Error('Passwords do not match.');
+        const { error: updateError } = await updatePassword(password);
+        if (updateError) throw updateError;
+        setMessage('Password updated.');
+        onPasswordUpdated();
+      }
+    } catch (authError) {
+      setError(authError.message || 'Something went wrong. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const heading = {
+    'sign-in': 'Sign in',
+    'sign-up': 'Create account',
+    reset: 'Reset password',
+    'new-password': 'Choose a new password',
+  }[mode];
+  const backToSignIn = async () => {
+    if (mode === 'new-password') await supabase.auth.signOut();
+    onPasswordUpdated();
+    setMode('sign-in');
+    setError('');
+    setMessage('');
+  };
+
+  return <div className="auth-page"><section className="auth-panel">
+    <span className="brand-mark"><Baby size={22} /></span>
+    <h1>little days</h1>
+    {mode === 'sign-in' || mode === 'sign-up' ? <div className="auth-modes" role="tablist" aria-label="Account access">
+      <button type="button" role="tab" aria-selected={mode === 'sign-in'} className={mode === 'sign-in' ? 'active' : ''} onClick={() => { setMode('sign-in'); setError(''); setMessage(''); }}>Sign in</button>
+      <button type="button" role="tab" aria-selected={mode === 'sign-up'} className={mode === 'sign-up' ? 'active' : ''} onClick={() => { setMode('sign-up'); setError(''); setMessage(''); }}>Create account</button>
+    </div> : <h2>{heading}</h2>}
+    <form className="auth-form" onSubmit={submit}>
+      {mode !== 'new-password' && <label>User ID<input value={username} onChange={event => setUsername(event.target.value.toLowerCase())} autoComplete="username" minLength={3} maxLength={32} required /></label>}
+      {mode === 'sign-up' && <label>Email<input type="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="email" required /></label>}
+      {mode !== 'reset' && <label>{mode === 'new-password' ? 'New password' : 'Password'}<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'} minLength={6} required /></label>}
+      {(mode === 'sign-up' || mode === 'new-password') && <label>Confirm password<input type="password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={6} required /></label>}
+      <Button type="submit" disabled={busy}>{busy ? 'Please wait…' : heading}</Button>
+    </form>
+    {mode === 'sign-in' && <button className="auth-link" type="button" onClick={() => { setMode('reset'); setError(''); setMessage(''); }}>Forgot password?</button>}
+    {(mode === 'reset' || mode === 'new-password') && <button className="auth-link" type="button" onClick={backToSignIn}>Back to sign in</button>}
+    {message && <p className="auth-message" role="status">{message}</p>}
+    {error && <p className="auth-error" role="alert">{error}</p>}
+  </section></div>;
+}
+
 function App() {
   const [activities, setActivities] = useState(getSavedActivities);
+  const [user, setUser] = useState(null);
+  const [accountUsername, setAccountUsername] = useState('');
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [activeKind, setActiveKind] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
   const [toast, setToast] = useState('');
+  const accountMenuRef = useRef(null);
+  useEffect(() => {
+    if (!accountMenuOpen) return undefined;
+    const closeOnOutsideClick = event => {
+      if (!accountMenuRef.current?.contains(event.target)) setAccountMenuOpen(false);
+    };
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setAccountMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountMenuOpen]);
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let active = true;
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (error) setToast(error.message);
+      setUser(data?.session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+      if (event === 'PASSWORD_RECOVERY') setRecoveryMode(true);
+      if (event === 'SIGNED_OUT') setRecoveryMode(false);
+    });
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+  useEffect(() => {
+    if (!supabase || !user) return undefined;
+    let active = true;
+    setActivities([]);
+    const loadActivities = async () => {
+      const { data, error } = await supabase
+        .from('baby_activities')
+        .select('*')
+        .order('occurred_at', { ascending: false });
+      if (!active) return;
+      if (error) {
+        setActivities(getStoredActivities(`${STORAGE_KEY}.${user.id}`));
+        setToast(`Could not load activities: ${error.message}`);
+        return;
+      }
+      if (data.length) {
+        const loaded = data.map(activityFromRow);
+        setActivities(loaded);
+        localStorage.setItem(`${STORAGE_KEY}.${user.id}`, JSON.stringify(loaded));
+        return;
+      }
+      const legacy = getStoredActivities();
+      if (!legacy.length) {
+        setActivities([]);
+        localStorage.setItem(`${STORAGE_KEY}.${user.id}`, '[]');
+        return;
+      }
+      const migrated = legacy.map(item => ({
+        ...item,
+        id: /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(item.id) ? item.id : crypto.randomUUID(),
+      }));
+      const { error: migrationError } = await supabase
+        .from('baby_activities')
+        .upsert(migrated.map(item => activityToRow(item, user.id)));
+      if (!active) return;
+      if (migrationError) {
+        setActivities(legacy);
+        setToast(`Could not sync saved activities: ${migrationError.message}`);
+        return;
+      }
+      setActivities(migrated);
+      localStorage.setItem(`${STORAGE_KEY}.${user.id}`, JSON.stringify(migrated));
+    };
+    loadActivities();
+    return () => { active = false; };
+  }, [user]);
+  useEffect(() => {
+    if (!supabase || !user) {
+      setAccountUsername('');
+      return undefined;
+    }
+    let active = true;
+    getSignedInUsername()
+      .then(username => { if (active) setAccountUsername(username || ''); })
+      .catch(error => { if (active) setToast(`Could not load user ID: ${error.message}`); });
+    return () => { active = false; };
+  }, [user]);
   const lastFeed = useMemo(() => activities.filter(item => item.kind === 'feed').sort((a, b) => new Date(b.at) - new Date(a.at))[0], [activities]);
   const visibleActivities = useMemo(() => [...activities].sort((a, b) => new Date(b.at) - new Date(a.at)), [activities]);
   const recent = visibleActivities;
-  const logActivity = (activity) => {
+  const logActivity = async (activity) => {
+    const saved = { ...activity, id: activity.id || crypto.randomUUID() };
     const next = activity.id
-      ? activities.map(item => item.id === activity.id ? activity : item)
-      : [{ ...activity, id: crypto.randomUUID() }, ...activities];
+      ? activities.map(item => item.id === activity.id ? saved : item)
+      : [saved, ...activities];
     setActivities(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(user ? `${STORAGE_KEY}.${user.id}` : STORAGE_KEY, JSON.stringify(next));
+    if (supabase && user) {
+      const { error } = await supabase.from('baby_activities').upsert(activityToRow(saved, user.id));
+      if (error) {
+        setToast(`Save failed: ${error.message}`);
+        return;
+      }
+    }
     setActiveKind(null);
     setEditingActivity(null);
     setToast(`${kinds[activity.kind].label} ${activity.id ? 'updated' : 'logged'}`);
     window.setTimeout(() => setToast(''), 2200);
   };
-  const removeActivity = (id) => {
+  const removeActivity = async (id) => {
     const next = activities.filter(item => item.id !== id);
     setActivities(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(user ? `${STORAGE_KEY}.${user.id}` : STORAGE_KEY, JSON.stringify(next));
+    if (supabase && user) {
+      const { error } = await supabase.from('baby_activities').delete().eq('id', id);
+      if (error) {
+        setToast(`Delete failed: ${error.message}`);
+        return;
+      }
+    }
     setEditingActivity(null);
   };
+
+  if (isSupabaseConfigured && authLoading) return <div className="auth-page"><div className="auth-panel">Loading…</div></div>;
+  if (isSupabaseConfigured && (!user || recoveryMode)) return <AuthPanel recoveryMode={recoveryMode} onPasswordUpdated={() => setRecoveryMode(false)} />;
 
   return <div className="app-shell">
     <header className="topbar">
       <a className="brand" href="#top" aria-label="Little Days home"><span className="brand-mark"><Baby size={19} /></span><span>little days</span></a>
-      <Button variant="ghost" size="sm" className="baby-switch"><span className="baby-avatar">M</span><span>Milo</span><ChevronDown size={15} /></Button>
+      {user ? <div className="account-menu" ref={accountMenuRef}>
+        <button type="button" className="account-trigger" aria-label="Account menu" aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen(open => !open)}>
+          <span className="baby-avatar">{(accountUsername || user.user_metadata?.username || '?').slice(0, 1).toUpperCase()}</span>
+        </button>
+        {accountMenuOpen && <div className="account-dropdown" role="group" aria-label="Account menu">
+          <span className="account-username">{accountUsername || user.user_metadata?.username || '…'}</span>
+          <button type="button" onClick={() => { setAccountMenuOpen(false); supabase.auth.signOut(); }}>Sign out</button>
+        </div>}
+      </div> : null}
     </header>
     <main id="top" className="page-wrap">
       <section className="quick-section" aria-labelledby="quick-heading">
