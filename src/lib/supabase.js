@@ -38,12 +38,8 @@ export function signInWithUsername(username, password) {
   return usernameAuth('sign-in', { username, password });
 }
 
-export function signUpWithUsername(username, email, password) {
-  return usernameAuth('sign-up', { username, email, password });
-}
-
-export function sendPasswordReset(username) {
-  return usernameAuth('reset-password', { username });
+export function signUpWithUsername(username, password) {
+  return usernameAuth('sign-up', { username, password });
 }
 
 export async function getSignedInUsername() {
@@ -62,11 +58,6 @@ export async function getSignedInUsername() {
   });
   if (error) throw error;
   return data?.username ?? null;
-}
-
-export function updatePassword(password) {
-  if (!supabase) throw new Error('Supabase is not configured.');
-  return supabase.auth.updateUser({ password });
 }
 
 export function activityToRow(activity, userId) {

@@ -17,9 +17,7 @@ Without Supabase configuration, activity entries stay in the current browser's `
 2. Apply the SQL migrations in `supabase/migrations` to the project.
 3. Deploy `supabase/functions/auth-by-username` with JWT verification enabled.
 4. Add `http://localhost:5173` to Supabase Auth's allowed redirect URLs.
-5. Restart the dev server. Users sign in with a user ID and password. Email is collected only when creating an account and is used for password recovery. Activities remain in each account's row-level-security-protected records.
-
-Existing browser-saved activities are copied into the signed-in user's Supabase table the first time that table is empty.
+5. Restart the dev server. Users create an account and sign in with a name and password. No email is collected. Supabase Auth uses a reserved internal address for each name, and there is no email-based password recovery; users must keep their password safe. Activities remain in each account's row-level-security-protected records.
 
 ## UI
 

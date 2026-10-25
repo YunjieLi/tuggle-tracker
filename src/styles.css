@@ -26,18 +26,31 @@ button { cursor: pointer; }
 .topbar { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(calc((100vw - 1080px) / 2), 24px); border-bottom: 1px solid #efedea; background: #fffdfb; }
 .brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; color: #34333b; font: 800 18px Manrope, sans-serif; letter-spacing: -.7px; }
 .brand-mark { width: 31px; height: 31px; border-radius: 11px; display: grid; place-items: center; background: #eeeaf9; color: #796bb2; }
+.profile-identity { display: inline-flex; align-items: center; gap: 10px; color: #34333b; }
+.profile-name { font-size: 18px; font-weight: 700; text-transform: capitalize; }
+.profile-photo { display: block; width: 40px; height: 40px; flex: none; border-radius: 50%; object-fit: cover; }
 .account-menu { position: relative; }
-.account-trigger { display: grid; place-items: center; width: 46px; height: 46px; padding: 3px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; list-style: none; }
+.account-trigger { display: grid; place-items: center; width: 42px; height: 42px; padding: 3px; border: 0; border-radius: 12px; color: #77747d; background: transparent; cursor: pointer; list-style: none; }
+.account-trigger:hover { background: transparent; }
 .account-trigger::-webkit-details-marker { display: none; }
 .account-trigger:focus-visible { outline: 2px solid #9381ce; outline-offset: 2px; }
 .baby-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #f9e4d5; color: #9a694e; font-weight: 700; font-size: 18px; }
-.account-dropdown { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; display: flex; min-width: 190px; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 8px 28px #292b3418; }
+.account-dropdown { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; display: flex; min-width: 220px; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 8px 28px #292b3418; }
 .account-username { padding: 10px 12px 8px; color: #77747d; font-size: 18px; font-weight: 600; }
 .account-dropdown button { min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; color: #3b3942; background: transparent; font-size: 18px; font-weight: 600; text-align: left; }
 .account-dropdown button:hover, .account-dropdown button:focus-visible { outline: 0; background: #f7f5f2; }
+.account-submenu-wrap { position: relative; }
+.account-dropdown .account-menu-action { display: flex; align-items: center; justify-content: space-between; gap: 9px; width: 100%; }
+.account-menu-action > span:first-child { flex: 1; }
+.account-current-value { color: #85818a; font-size: 15px; font-weight: 500; }
+.account-submenu { position: absolute; z-index: 31; top: -8px; right: calc(100% + 8px); display: flex; width: 180px; flex-direction: column; gap: 3px; padding: 7px; border: 1px solid var(--border); border-radius: 11px; background: white; box-shadow: 0 8px 28px #292b3418; }
+.account-dropdown .account-submenu button { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.account-dropdown .account-submenu button[aria-checked="true"] { color: #67569e; }
+.account-dropdown .account-submenu button:disabled { color: #b5b1b8; cursor: not-allowed; }
+.profile-picture-input { display: none !important; }
 .page-wrap { width: min(100% - 40px, 700px); margin: 0 auto; }
 .welcome { padding: 40px 0 35px; }
-.quick-section { margin-bottom: 24px; }
+.quick-section { position: relative; margin-bottom: 24px; }
 .quick-section { margin-top: 32px; }
 .recent-section { margin-top: 32px; }
 .recent-section .activity-list { margin-top: 17px; }
@@ -110,34 +123,54 @@ button { cursor: pointer; }
 .dialog-header .activity-icon { grid-row: auto; }
 .dialog-header h2 { margin: 0; font: 700 20px Manrope, sans-serif; letter-spacing: -.3px; }
 .dialog-header p { margin: 4px 25px 0 0; color: #929098; font-size: 18px; line-height: 1.5; }
+.autosave-hint { margin: 7px 0 -7px 47px; color: #929098; font-size: 14px; }
+.profile-crop-dialog { width: min(380px, calc(100vw - 24px)); padding: 20px; }
+.profile-crop-dialog .dialog-header { display: block; }
+.profile-crop-dialog .dialog-header h2 { padding-right: 28px; }
+.profile-crop-help { margin: 9px 0 14px; color: #77747d; font-size: 15px; }
+.profile-crop-stage { position: relative; width: 240px; height: 240px; overflow: hidden; margin: 0 auto 17px; border-radius: 50%; background: #efedeb; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #e9e5e1; cursor: grab; touch-action: none; user-select: none; }
+.profile-crop-stage:active { cursor: grabbing; }
+.profile-crop-stage img { position: absolute; max-width: none; max-height: none; transform: translate(-50%, -50%); pointer-events: none; user-select: none; }
+.profile-crop-zoom { display: flex; align-items: center; gap: 13px; color: #5e5b63; font-size: 16px; font-weight: 600; }
+.profile-crop-zoom input { flex: 1; accent-color: #77747d; }
+.profile-crop-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.profile-crop-actions .ui-button { min-height: 46px; }
 .dialog-close { position: absolute; right: 15px; top: 15px; display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: #99969d; }
 .dialog-close:hover { background: #f3f0ed; }
 .activity-form { display: flex; flex-direction: column; gap: 13px; margin-top: 20px; }
 .activity-form label { display: flex; flex-direction: column; gap: 6px; color: #5e5b63; font-size: 18px; font-weight: 600; }
-.activity-form .optional { margin-left: 4px; color: #85818a; font-size: 18px; font-weight: 400; }
+.time-field-group { display: flex; flex-direction: column; gap: 2px; }
+.activity-form .time-picker-row { display: grid; grid-template-columns: 40% minmax(0, 60%); align-items: center; gap: 0; }
+.time-picker-row > input { width: 100%; min-width: 0; }
+.event-date-row { position: relative; display: flex; justify-content: flex-end; width: 60%; margin-left: 40%; padding-right: 2px; }
+.date-edit-button { display: inline-flex; align-items: center; gap: 5px; padding: 2px 0; border: 0; color: #85818a; background: transparent; font-size: 14px; font-weight: 500; }
+.date-edit-button svg { color: #9381ce; }
+.date-edit-button:hover, .date-edit-button:focus-visible { color: #67569e; outline: 0; text-decoration: underline; }
 .activity-form input, .activity-form select { width: 100%; height: 46px; padding: 0 10px; border: 1px solid #e9e5e1; border-radius: 7px; outline: none; color: #504d55; background: #fff; font-size: 18px; font-weight: 400; }
 .activity-form input:focus, .activity-form select:focus { border-color: #a595cf; box-shadow: 0 0 0 3px #a595cf26; }
 .feed-amounts { display: flex; flex-direction: column; gap: 11px; }
 .amounts-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: -1px; }
 .amounts-heading strong { color: #5e5b63; font-size: 18px; }
 .amounts-heading span { color: #85818a; font-size: 18px; }
-.amount-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.amount-field { display: grid; grid-template-columns: 40% minmax(0, 60%); align-items: center; gap: 0; }
 .amount-label { color: #5e5b63; font-size: 18px; font-weight: 600; }
-.amount-stepper { display: flex; align-items: center; height: 34px; border: 1px solid #e9e5e1; border-radius: 8px; background: white; overflow: hidden; }
-.amount-stepper button { display: grid; place-items: center; width: 40px; height: 42px; border: 0; color: #7666b2; background: transparent; font-size: 22px; }
+.amount-stepper { display: flex; align-items: center; width: 100%; min-width: 0; height: 46px; border: 1px solid #e9e5e1; border-radius: 8px; background: white; overflow: hidden; }
+.amount-stepper button { display: grid; place-items: center; flex: 0 0 34px; height: 44px; border: 0; color: #7666b2; background: transparent; font-size: 22px; }
 .amount-stepper button:hover:not(:disabled) { background: #f5f2fa; }
 .amount-stepper button:disabled { color: #d2cfd4; cursor: default; }
-.amount-stepper input { width: 50px; height: 40px; padding: 0; border: 0; border-radius: 0; text-align: right; outline: 0; box-shadow: none; color: #504d55; font-size: 18px; font-weight: 600; }
+.amount-stepper input { flex: 1 1 auto; width: 20px; min-width: 0; height: 40px; padding: 0; border: 0; border-radius: 0; text-align: right; outline: 0; box-shadow: none; color: #504d55; font-size: 18px; font-weight: 600; }
 .amount-stepper input:focus { border: 0; box-shadow: none; }
 .amount-unit { padding: 0 5px 0 4px; color: #716e77; font-size: 18px; }
 .form-error { color: #a9474b; font-size: 18px; }
-.dialog-footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border-top: 1px solid #f0eeeb; margin-top: 5px; padding-top: 13px; }
+.dialog-footer { display: block; border-top: 1px solid #f0eeeb; margin-top: 5px; padding-top: 13px; }
 .dialog-footer .ui-button { width: 100%; min-height: 48px; }
-.breastfeeding-toggle { display: inline-flex; align-items: center; align-self: flex-start; gap: 9px; padding: 2px 0; border: 0; color: #57535e; background: transparent; font-size: 18px; font-weight: 600; }
+.event-toggle { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; width: 100%; height: 46px; padding: 0; border: 0; color: #5e5b63; background: transparent; font-size: 18px; font-weight: 600; text-align: left; }
+.feed-amounts > .event-toggle { display: grid; grid-template-columns: 40% minmax(0, 60%); }
+.diaper-toggles { display: flex; flex-direction: column; gap: 4px; }
 .toggle-track { display: flex; align-items: center; width: 34px; height: 20px; padding: 2px; border-radius: 99px; background: #dedbe0; transition: background .15s ease; }
 .toggle-track > span { width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #20192725; transition: transform .15s ease; }
-.breastfeeding-toggle.on .toggle-track { background: #8572bd; }
-.breastfeeding-toggle.on .toggle-track > span { transform: translateX(14px); }
+.event-toggle.on .toggle-track { background: #8572bd; }
+.event-toggle.on .toggle-track > span { transform: translateX(14px); }
 .toast { position: fixed; left: 50%; bottom: 22px; z-index: 70; display: flex; align-items: center; gap: 8px; transform: translateX(-50%); padding: 12px 16px; border: 1px solid #e8e4e0; border-radius: 9px; color: #514f57; background: #fff; box-shadow: 0 7px 25px #322b201a; font-size: 18px; }
 .toast svg { color: #71956f; }
 .auth-page { display: grid; min-height: 100dvh; place-items: center; padding: 24px; }
@@ -193,23 +226,16 @@ button { cursor: pointer; }
     animation: sheet-up .2s ease-out;
   }
   .activity-sheet-content .activity-form { gap: 16px; margin-top: 22px; }
-  .activity-sheet-content .activity-form > label {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: 100%;
-  }
+  .activity-sheet-content .activity-form > label { display: grid; grid-template-columns: 40% minmax(0, 60%); align-items: center; gap: 0; width: 100%; }
   .activity-sheet-content .activity-form > label > input,
   .activity-sheet-content .activity-form > label > select {
-    flex: 0 0 58%;
-    width: 58%;
+    flex: none;
+    width: 100%;
     min-width: 0;
   }
   .activity-sheet-content .feed-amounts { gap: 15px; }
   .activity-sheet-content .amount-stepper { flex: none; height: 46px; }
   .activity-sheet-content .amount-stepper button { width: 40px; height: 44px; }
-  .activity-sheet-content .breastfeeding-toggle { align-self: flex-start; }
   .activity-sheet-content .dialog-footer { margin-top: 4px; }
 }
 
@@ -225,19 +251,18 @@ button { cursor: pointer; }
 .activity-row { width: 100%; border: 0; border-bottom: 1px solid #f0eeeb; background: transparent; text-align: left; cursor: pointer; }
 .activity-row:last-child { border-bottom: 0; }
 .activity-row:focus-visible { outline: 2px solid #9381ce; outline-offset: 2px; border-radius: 8px; }
-.activity-form > label { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
-.activity-form > label > input { width: 58%; min-width: 0; }
-.diaper-segment { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 4px; border-radius: 9px; background: #f3f1ef; }
-.diaper-segment button { min-height: 44px; border: 0; border-radius: 7px; background: transparent; color: #69666f; font-size: 18px; font-weight: 600; }
-.diaper-segment button.selected { color: #67569e; background: #fff; box-shadow: 0 1px 3px #21182a20; }
-.dialog-footer { display: flex; flex-direction: column; }
+.activity-form > label { display: grid; grid-template-columns: 40% minmax(0, 60%); align-items: center; gap: 0; }
+.activity-form > label > input, .activity-form > label > select { width: 100%; min-width: 0; }
 .dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; }
-.dialog-footer .delete-record { width: 100%; min-height: 48px; color: #a64b50; border-color: #eedcda; }
+.delete-record { align-self: flex-start; padding: 0; border: 0; color: #a64b50; background: transparent; font-size: 16px; font-weight: 600; cursor: pointer; }
+.delete-record:hover, .delete-record:focus-visible { text-decoration: underline; }
+.date-picker-input { position: absolute; right: 0; bottom: 0; width: 1px !important; height: 1px !important; padding: 0 !important; opacity: 0; pointer-events: none; }
 @media (max-width: 560px) {
   .quick-plus, .quick-plus svg { display: none; }
   .activity-row { gap: 10px; }
-  .activity-sheet-content .activity-form > label { flex-direction: row; }
-  .activity-sheet-content .activity-form > label > input { flex: 0 0 58%; width: 58%; }
+  .activity-sheet-content .activity-form > label { display: grid; grid-template-columns: 40% minmax(0, 60%); }
+  .activity-sheet-content .activity-form > label > input { flex: none; width: 100%; }
   .activity-sheet-content .dialog-footer { gap: 10px; }
   .activity-sheet-content .dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-submenu { position: static; width: auto; margin: 0 4px 4px 10px; border: 0; border-left: 1px solid var(--border); border-radius: 0; box-shadow: none; }
 }
