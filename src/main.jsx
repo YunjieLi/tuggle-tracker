@@ -1,6 +1,9 @@
+import { formatAppDate, localDateValue } from './lib/dates';
+import { baby } from './lib/growth';
+import { BabyProfile, GrowthChart } from './components/BabyPages';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, Check, ChevronRight, Droplets, Milk, Moon, Pencil, Settings, Sparkles, Waves } from 'lucide-react';
+import { Baby, Check, Droplets, Menu, Milk, Moon, Pencil, Sparkles, Waves } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
@@ -9,6 +12,7 @@ import './styles.css';
 const STORAGE_KEY = 'little-days.activities.v1';
 const QUICK_ACTIONS_KEY = 'little-days.quick-actions.v1';
 const LANGUAGE_KEY = 'little-days.language.v1';
+const LOCAL_PROFILE_PICTURE_KEY = 'little-days.profile-picture';
 const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const DEFAULT_QUICK_ACTIONS = ['feed', 'diaper'];
 const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '💩', sleep: '😴' };
@@ -64,26 +68,13 @@ function timeAgo(date, language) {
   if (minutes < 60) return `${minutes} ${tr(language, 'minAgo')}`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} ${tr(language, hours > 1 ? 'hrsAgo' : 'hrAgo')}`;
-  return new Date(date).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en', { month: 'short', day: 'numeric' });
+  return formatAppDate(date);
 }
 
 function getTimeSlot(date = new Date()) {
   const rounded = new Date(date);
   rounded.setMinutes(Math.floor(rounded.getMinutes() / 10) * 10, 0, 0);
   return `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
-}
-
-function localDateValue(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function activityDayLabel(value, language) {
-  const day = localDateValue(new Date(value));
-  if (day === localDateValue()) return tr(language, 'today');
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (day === localDateValue(yesterday)) return tr(language, 'yesterday');
-  return new Date(`${day}T12:00:00`).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function activityDateAtTime(dateValue, value) {
@@ -282,8 +273,8 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
           <label className="time-picker-row">{tr(language, 'time')}<input type="time" step="600" value={time} onChange={e => { markDirty(); setTime(e.target.value); }} required /></label>
           <div className="event-date-row">
             <input ref={dateInputRef} className="date-picker-input" type="date" value={date} onChange={e => { markDirty(); setDate(e.target.value); }} required aria-label={tr(language, 'date')} />
-            <button type="button" className="date-edit-button" aria-label={`${tr(language, 'edit')} ${tr(language, 'date').toLowerCase()}, ${new Date(`${date}T12:00:00`).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en')}`} onClick={() => { const input = dateInputRef.current; if (input?.showPicker) input.showPicker(); else input?.click(); }}>
-              <span>{new Date(`${date}T12:00:00`).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en', { month: 'short', day: 'numeric', year: 'numeric' })}</span><Pencil size={13}/>
+            <button type="button" className="date-edit-button" aria-label={`${tr(language, 'edit')} ${tr(language, 'date').toLowerCase()}, ${formatAppDate(date)}`} onClick={() => { const input = dateInputRef.current; if (input?.showPicker) input.showPicker(); else input?.click(); }}>
+              <span>{formatAppDate(date)}</span><Pencil size={13}/>
             </button>
           </div>
         </div>
@@ -369,6 +360,12 @@ function AuthPanel({ language }) {
 }
 
 function App() {
+  const [page, setPage] = useState(() => window.location.hash);
+  useEffect(() => {
+    const updatePage = () => setPage(window.location.hash);
+    window.addEventListener('hashchange', updatePage);
+    return () => window.removeEventListener('hashchange', updatePage);
+  }, []);
   const [activities, setActivities] = useState(getSavedActivities);
   const [quickActions, setQuickActions] = useState(getQuickActions);
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) === 'en' ? 'en' : 'zh');
@@ -402,7 +399,7 @@ function App() {
   }, [language]);
   useEffect(() => {
     if (!user || !supabase) {
-      setProfilePicture('');
+      setProfilePicture(supabase ? '' : localStorage.getItem(LOCAL_PROFILE_PICTURE_KEY) || '');
       return undefined;
     }
     let active = true;
@@ -437,7 +434,22 @@ function App() {
     setCropSource(URL.createObjectURL(file));
   };
   const saveProfilePicture = async blob => {
-    if (!user || !supabase) return;
+    if (!supabase) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          localStorage.setItem(LOCAL_PROFILE_PICTURE_KEY, reader.result);
+          setProfilePicture(reader.result);
+          closePhotoCrop();
+        } catch {
+          setToast(tr(language, 'saveFailed'));
+        }
+      };
+      reader.onerror = () => setToast(tr(language, 'saveFailed'));
+      reader.readAsDataURL(blob);
+      return;
+    }
+    if (!user) return;
     const path = `${user.id}/avatar.png`;
     const { error } = await supabase.storage.from(PROFILE_PICTURES_BUCKET).upload(path, blob, { contentType: 'image/png', cacheControl: '3600', upsert: true });
     if (error) {
@@ -583,30 +595,36 @@ function App() {
 
   return <div className="app-shell">
     <header className="topbar">
-      {user ? <div className="profile-identity">{profilePicture ? <img className="profile-photo" src={profilePicture} alt="" /> : <span className="baby-avatar">{(accountUsername || user.user_metadata?.username || '?').slice(0, 1).toUpperCase()}</span>}<span className="profile-name">{accountUsername || user.user_metadata?.username || '…'}</span></div> : <a className="brand" href="#top" aria-label={tr(language, 'home')}><span className="brand-mark"><Baby size={19} /></span><span>little days</span></a>}
-      {user ? <div className="account-menu" ref={accountMenuRef}>
-        <button type="button" className="account-trigger" aria-label={tr(language, 'settings')} aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen(open => !open)}>
-          <Settings size={21} strokeWidth={1.9}/>
+      <a className="profile-identity" href="#top">
+        {profilePicture ? <img className="profile-photo" src={profilePicture} alt="" /> : <span className="baby-avatar" aria-hidden="true"><Baby size={20} /></span>}
+        <span className="profile-name">{accountUsername || user?.user_metadata?.username || baby.name}</span>
+      </a>
+      <div className="account-menu" ref={accountMenuRef}>
+        <button type="button" className="account-trigger" aria-label={tr(language, 'accountMenu')} aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen(open => !open)}>
+          <Menu size={23} strokeWidth={1.9} aria-hidden="true" />
         </button>
         {accountMenuOpen && <div className="account-dropdown" role="menu" aria-label={tr(language, 'accountMenu')}>
-          <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setAccountSubmenu(null); profilePictureInputRef.current?.click(); }}>{tr(language, 'profilePicture')}</button>
+          {[['#growth-chart', 'Growth chart', '生长曲线'], ['#baby-profile', 'Baby profile', '宝宝档案']].map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
+          {user && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setAccountSubmenu(null); profilePictureInputRef.current?.click(); }}>{tr(language, 'profilePicture')}</button>}
           <div className="account-submenu-wrap">
-            <button type="button" role="menuitem" className="account-menu-action" aria-haspopup="menu" aria-expanded={accountSubmenu === 'language'} onClick={() => setAccountSubmenu(value => value === 'language' ? null : 'language')}><span>{tr(language, 'language')}</span><span className="account-current-value">{tr(language, language === 'zh' ? 'chinese' : 'english')}</span><ChevronRight size={15}/></button>
+            <button type="button" role="menuitem" className="account-menu-action" aria-haspopup="menu" aria-expanded={accountSubmenu === 'language'} onClick={() => setAccountSubmenu(value => value === 'language' ? null : 'language')}><span>{tr(language, 'language')}</span><span className="account-current-value">{tr(language, language === 'zh' ? 'chinese' : 'english')}</span></button>
             {accountSubmenu === 'language' && <div className="account-submenu" role="menu" aria-label={tr(language, 'language')}>
-              {['zh', 'en'].map(value => <button key={value} type="button" role="menuitemradio" aria-checked={language === value} onClick={() => changeLanguage(value)}><span>{value === 'zh' ? '中文' : 'English'}</span>{language === value && <Check size={16}/>}</button>)}
+              {['zh', 'en'].map(value => <button key={value} type="button" role="menuitemradio" aria-checked={language === value} onClick={() => changeLanguage(value)}><span>{value === 'zh' ? '中文' : 'English'}</span></button>)}
             </div>}
           </div>
           <div className="account-submenu-wrap">
-            <button type="button" role="menuitem" className="account-menu-action" aria-haspopup="menu" aria-expanded={accountSubmenu === 'quick-actions'} onClick={() => setAccountSubmenu(value => value === 'quick-actions' ? null : 'quick-actions')}><span>{tr(language, 'customize')}</span><ChevronRight size={15}/></button>
+            <button type="button" role="menuitem" className="account-menu-action" aria-haspopup="menu" aria-expanded={accountSubmenu === 'quick-actions'} onClick={() => setAccountSubmenu(value => value === 'quick-actions' ? null : 'quick-actions')}><span>{tr(language, 'customize')}</span></button>
             {accountSubmenu === 'quick-actions' && <div className="account-submenu" role="menu" aria-label={tr(language, 'quickActions')}>
-              {Object.keys(kinds).map(kind => <button key={kind} type="button" role="menuitemcheckbox" aria-checked={quickActions.includes(kind)} disabled={quickActions.length === 1 && quickActions.includes(kind)} onClick={() => toggleQuickAction(kind)}><span>{tr(language, kind)}</span>{quickActions.includes(kind) && <Check size={16}/>}</button>)}
+              {Object.keys(kinds).map(kind => <button key={kind} type="button" role="menuitemcheckbox" aria-checked={quickActions.includes(kind)} disabled={quickActions.length === 1 && quickActions.includes(kind)} onClick={() => toggleQuickAction(kind)}><span>{tr(language, kind)}</span></button>)}
             </div>}
           </div>
-          <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); supabase.auth.signOut(); }}>{tr(language, 'signOut')}</button>
+          {user && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); supabase.auth.signOut(); }}>{tr(language, 'signOut')}</button>}
         </div>}
         <input ref={profilePictureInputRef} className="profile-picture-input" type="file" accept="image/*" onChange={handleProfilePictureFile} />
-      </div> : null}
+      </div>
     </header>
+    {page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
+      page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()} /> :
     <main id="top" className="page-wrap">
       <section className="quick-section" aria-labelledby="quick-heading">
         <div className="section-heading"><h2 id="quick-heading">{tr(language, 'quickActions')}</h2></div>
@@ -629,7 +647,7 @@ function App() {
               const previousDay = index ? localDateValue(new Date(visibleActivities[index - 1].at)) : null;
               const nextDay = index < visibleActivities.length - 1 ? localDateValue(new Date(visibleActivities[index + 1].at)) : null;
               return <React.Fragment key={activity.id}>
-                {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{activityDayLabel(activity.at, language)}</span></div>}
+                {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day)}</span></div>}
                 <article className="activity-row" role="button" tabIndex={0} onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
                   <ActivityIcon kind={activity.kind} emoji recent />
                   {nextDay === day && <span className="timeline-line"/>}
@@ -640,7 +658,7 @@ function App() {
             {visibleActivities.length === 0 && <div className="empty-feed"><span className="empty-icon"><Sparkles size={19}/></span><strong>{tr(language, 'noActivity')}</strong><Button variant="outline" size="sm" onClick={() => createActivity('feed')}>{tr(language, 'log')}</Button></div>}
         </div>
       </section>
-    </main>
+    </main>}
     <ActivityDialog kind={activeKind || editingActivity?.kind} activity={editingActivity} open={Boolean(activeKind || editingActivity)} lastFeed={lastFeed} language={language} onOpenChange={(open) => { if (!open) { setActiveKind(null); setEditingActivity(null); } }} onSave={logActivity} onDelete={removeActivity}/>
     <ProfilePictureCropDialog open={Boolean(cropSource)} source={cropSource} language={language} onOpenChange={open => { if (!open) closePhotoCrop(); }} onSave={saveProfilePicture}/>
     {toast && <div className="toast" role="status"><Check size={16}/>{toast}</div>}

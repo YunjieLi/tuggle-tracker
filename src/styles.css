@@ -278,3 +278,50 @@ button { cursor: pointer; }
   .activity-sheet-content .dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .account-submenu { position: static; width: auto; margin: 0 4px 4px 10px; border: 0; border-left: 1px solid var(--border); border-radius: 0; box-shadow: none; }
 }
+
+.baby-page { display: grid; gap: 16px; }
+.baby-page h1 { font: 800 1.65rem Manrope, sans-serif; }
+.baby-page h2 { font-size: 1rem; font-weight: 700; }
+.baby-page > button { justify-self: start; }
+.baby-panel { padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.baby-panel > p { color: #625e6b; font-size: .85rem; }
+.baby-details { display: flex; align-items: center; gap: 24px; }
+.baby-portrait { display: grid; place-items: center; flex-shrink: 0; width: 84px; height: 84px; border-radius: 50%; background: #eeeaf9; color: #67569e; object-fit: cover; }
+.baby-details dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; }
+.baby-details dt { color: #625e6b; }
+.growth-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; }
+.growth-form label { display: grid; gap: 5px; font-size: .88rem; }
+.growth-form input { width: 100%; min-height: 42px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.growth-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; grid-column: 1 / -1; }
+.dialog-content .growth-form { grid-template-columns: 1fr; margin-top: 18px; }
+.growth-measurement > label { margin-bottom: 5px; }
+.growth-measurement-inputs { display: flex; gap: 8px; }
+.growth-measurement-inputs input { flex: 1; min-width: 0; }
+.growth-plot { display: block; width: 100%; max-height: 430px; font-size: 11px; }
+.growth-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.growth-segments { font-size: .85rem; }
+.growth-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.growth-tabs button { flex: 1; padding: 8px 3px; border-bottom: 2px solid transparent; color: #625e6b; font-size: .8rem; }
+.growth-tabs button[aria-selected="true"] { border-color: var(--primary); color: #67569e; font-weight: 700; }
+.growth-segments { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: #ece7f4; }
+.growth-segments button { min-width: 64px; min-height: 36px; padding: 4px 12px; border-radius: 7px; color: #625e6b; }
+.growth-segments button[aria-pressed="true"] { background: white; color: #57438b; font-weight: 700; box-shadow: 0 1px 3px #30234220; }
+.growth-results { display: grid; gap: 16px; }
+.growth-results > .baby-panel { border: 0; }
+.growth-toolbar > button { gap: 5px; }
+.growth-date-field { position: relative; display: flex; align-items: center; min-height: 42px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.growth-date-field:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+.growth-date-field input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.growth-date-field input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; cursor: pointer; }
+
+.baby-page-heading { margin-top: 16px; display: flex; align-items: center; gap: 8px; }
+.baby-back { display: grid; place-items: center; flex: none; width: 40px; height: 44px; border-radius: 10px; color: #67569e; }
+.baby-back:hover { background: #eeeaf9; }
+.growth-sheet .dialog-header { grid-template-columns: minmax(0, 1fr); padding-right: 28px; }
+.growth-unit-field { display: flex; align-items: center; flex: 1; min-width: 0; min-height: 42px; border: 1px solid var(--border); border-radius: 8px; }
+.growth-unit-field input { border: 0; background: transparent; }
+.growth-unit-field select { flex: none; padding: 6px 8px; background: transparent; }
+.growth-history .activity-detail { display: block; }
+
+.baby-photo-actions { position: relative; flex: none; }
+.baby-photo-actions .baby-photo-camera { position: absolute; right: -4px; bottom: -4px; width: 34px; height: 34px; min-height: 34px; padding: 0; border: 2px solid white; border-radius: 50%; }
