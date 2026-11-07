@@ -1,9 +1,9 @@
-import { formatAppDate, localDateValue } from './lib/dates';
+import { formatAppDate, formatRecordTime, localDateValue } from './lib/dates';
 import { baby } from './lib/growth';
 import { BabyProfile, GrowthChart } from './components/BabyPages';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, Check, Droplets, Menu, Milk, Moon, Pencil, Sparkles, Waves } from 'lucide-react';
+import { Baby, Check, Droplets, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
@@ -17,8 +17,8 @@ const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const DEFAULT_QUICK_ACTIONS = ['feed', 'diaper'];
 const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '💩', sleep: '😴' };
 const translations = {
-  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Little Days home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', diaperAmount: 'Diaper amount', wet: 'Pee', poop: 'Poop', small: 'Small', medium: 'Medium', large: 'Large', duration: 'Duration', note: 'Note', addNote: 'Add a note…', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in milliliters', sleepDurationPlaceholder: 'e.g. 45 min', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
-  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Little Days 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', diaperAmount: '尿布量', wet: '尿尿', poop: '臭臭', small: '少', medium: '中', large: '多', duration: '时长', note: '备注', addNote: '添加备注…', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: '毫升', decrease: '减少', increase: '增加', amountInMl: '单位：毫升', sleepDurationPlaceholder: '例如：45 分钟', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
+  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Little Days home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', diaperAmount: 'Diaper amount', wet: 'Pee', poop: 'Poop', small: 'Small', medium: 'Medium', large: 'Large', duration: 'Duration', note: 'Note', addNote: 'Add a note…', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', sleepDurationPlaceholder: 'e.g. 45 min', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
+  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Little Days 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', diaperAmount: '尿布量', wet: '尿尿', poop: '臭臭', small: '少', medium: '中', large: '多', duration: '时长', note: '备注', addNote: '添加备注…', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', sleepDurationPlaceholder: '例如：45 min', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
 };
 const tr = (language, key) => translations[language]?.[key] ?? translations.en[key] ?? key;
 const kinds = {
@@ -60,15 +60,6 @@ function getQuickActions() {
 function ActivityIcon({ kind, size = 17, emoji = false, recent = false }) {
   const Icon = kinds[kind].icon;
   return <span className={`activity-icon ${kinds[kind].tint} ${recent ? 'activity-icon-recent' : ''}`}>{emoji ? <span aria-hidden="true">{quickActionEmoji[kind]}</span> : <Icon size={size} strokeWidth={1.8} />}</span>;
-}
-
-function timeAgo(date, language) {
-  const minutes = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 60_000));
-  if (minutes < 1) return tr(language, 'justNow');
-  if (minutes < 60) return `${minutes} ${tr(language, 'minAgo')}`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ${tr(language, hours > 1 ? 'hrsAgo' : 'hrAgo')}`;
-  return formatAppDate(date);
 }
 
 function getTimeSlot(date = new Date()) {
@@ -193,10 +184,11 @@ function ProfilePictureCropDialog({ open, source, language, onOpenChange, onSave
 }
 
 function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, lastFeed, language }) {
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [note, setNote] = useState('');
   const [amount, setAmount] = useState('');
   const [amounts, setAmounts] = useState({ formulaAmount: '', breastmilkAmount: '' });
-  const [breastfeeding, setBreastfeeding] = useState(false);
   const [diaperWet, setDiaperWet] = useState(false);
   const [diaperPoop, setDiaperPoop] = useState(false);
   const [diaperAmount, setDiaperAmount] = useState('');
@@ -228,7 +220,6 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     setNote(activity?.note ?? (kind === 'sleep' && activity?.detail && activity.detail !== 'Sleep' ? activity.detail : ''));
     setAmount(activity?.amount == null ? '' : String(activity.amount));
     if (kind === 'feed') {
-      setBreastfeeding(Boolean(activity?.breastfeeding ?? lastFeed?.breastfeeding));
       setAmounts({
         formulaAmount: (activity?.formulaAmount ?? lastFeed?.formulaAmount) == null ? '' : String(activity?.formulaAmount ?? lastFeed?.formulaAmount),
         breastmilkAmount: (activity?.breastmilkAmount ?? lastFeed?.breastmilkAmount) == null ? '' : String(activity?.breastmilkAmount ?? lastFeed?.breastmilkAmount),
@@ -239,7 +230,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
   const draft = () => {
     if (kind === 'feed') {
       const parsed = Object.fromEntries(Object.entries(amounts).map(([key, value]) => [key, value === '' ? null : Number(value)]));
-      return { id: activity?.id, kind, at, detail: 'Feed', note: note.trim(), breastfeeding, ...parsed };
+      return { id: activity?.id, kind, at, detail: 'Feed', note: note.trim(), breastfeeding: Boolean(activity?.breastfeeding), ...parsed };
     }
     if (kind === 'pump') return { id: activity?.id, kind, at, detail: 'Pumping session', note: note.trim(), amount: amount === '' ? null : Number(amount) };
     if (kind === 'diaper') return { id: activity?.id, kind, at, detail: `Wet:${diaperWet}|Poop:${diaperPoop}|Amount:${diaperAmount}`, note: note.trim() };
@@ -257,32 +248,42 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
       if (dirtyRef.current && scheduledVersion === versionRef.current) saveDraftRef.current();
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [open, activity?.id, kind, time, date, note, amount, amounts, breastfeeding, diaperWet, diaperPoop, diaperAmount]);
+  }, [open, activity?.id, kind, time, date, note, amount, amounts, diaperWet, diaperPoop, diaperAmount]);
   return <Dialog open={open} onOpenChange={nextOpen => {
+    if (savingRef.current) return;
     if (!nextOpen) saveDraftRef.current();
     onOpenChange(nextOpen);
   }}>
     {config && <DialogContent className="activity-sheet-content">
       <DialogHeader>
-        <ActivityIcon kind={kind} size={20} />
+        <ActivityIcon kind={kind} emoji recent />
         <DialogTitle>{activity ? tr(language, 'edit') : tr(language, 'log')} {tr(language, kind).toLowerCase()}</DialogTitle>
       </DialogHeader>
-      {activity && <p className="autosave-hint">{tr(language, 'autoSaveHint')}</p>}
-      <form className="activity-form" onSubmit={event => event.preventDefault()}>
+      <form className="activity-form" onSubmit={async event => {
+        event.preventDefault();
+        if (activity || savingRef.current) return;
+        savingRef.current = true;
+        setSaving(true);
+        try {
+          await onSave(draft());
+        } finally {
+          savingRef.current = false;
+          setSaving(false);
+        }
+      }}>
         <div className="time-field-group">
           <label className="time-picker-row">{tr(language, 'time')}<input type="time" step="600" value={time} onChange={e => { markDirty(); setTime(e.target.value); }} required /></label>
           <div className="event-date-row">
             <input ref={dateInputRef} className="date-picker-input" type="date" value={date} onChange={e => { markDirty(); setDate(e.target.value); }} required aria-label={tr(language, 'date')} />
-            <button type="button" className="date-edit-button" aria-label={`${tr(language, 'edit')} ${tr(language, 'date').toLowerCase()}, ${formatAppDate(date)}`} onClick={() => { const input = dateInputRef.current; if (input?.showPicker) input.showPicker(); else input?.click(); }}>
-              <span>{formatAppDate(date)}</span><Pencil size={13}/>
+            <button type="button" className="date-edit-button" aria-label={`${tr(language, 'edit')} ${tr(language, 'date').toLowerCase()}, ${formatAppDate(date, language)}`} onClick={() => { const input = dateInputRef.current; if (input?.showPicker) input.showPicker(); else input?.click(); }}>
+              <span>{formatAppDate(date, language)}</span><Pencil size={13}/>
             </button>
           </div>
         </div>
         {kind === 'feed' && <div className="feed-amounts">
           <AmountStepper label={tr(language, 'formula')} value={amounts.formulaAmount} onChange={value => { markDirty(); setAmounts(current => ({ ...current, formulaAmount: value })); }} language={language} />
           <AmountStepper label={tr(language, 'breastmilk')} value={amounts.breastmilkAmount} onChange={value => { markDirty(); setAmounts(current => ({ ...current, breastmilkAmount: value })); }} language={language} />
-          <EventToggle label={tr(language, 'breastfeeding')} checked={breastfeeding} onChange={() => { markDirty(); setBreastfeeding(value => !value); }} />
-        </div>}
+          </div>}
         {kind === 'pump' && <AmountStepper label={tr(language, 'amount')} value={amount} onChange={value => { markDirty(); setAmount(value); }} language={language} />}
         {kind === 'diaper' && <div className="diaper-controls">
           <div className="diaper-toggles">
@@ -300,14 +301,14 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
           <label>{tr(language, 'duration')}<input value={amount} onChange={e => { markDirty(); setAmount(e.target.value); }} placeholder={tr(language, 'sleepDurationPlaceholder')} /></label>
         </>}
         <label>{tr(language, 'note')}<input value={note} onChange={e => { markDirty(); setNote(e.target.value); }} placeholder={tr(language, 'addNote')} /></label>
+        {!activity && <div className="dialog-actions">
+          <Button type="submit" disabled={saving}>{tr(language, 'save')}</Button>
+          <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr(language, 'cancel')}</Button>
+        </div>}
         {activity && <button type="button" className="delete-record" onClick={() => onDelete(activity.id)}>{tr(language, 'delete')}</button>}
       </form>
     </DialogContent>}
   </Dialog>;
-}
-
-function defaultDetail(kind) {
-  return { feed: 'Nursed', pump: 'Pumping session', diaper: 'Diaper changed', sleep: 'Sleep' }[kind];
 }
 
 function activitySubtitle(activity, language) {
@@ -325,7 +326,10 @@ function activitySubtitle(activity, language) {
     const diaperAmount = rawAmount ? tr(language, rawAmount === 'small' ? 'small' : 'large') : '';
     return [diaperAmount, note].filter(Boolean).join(' · ');
   }
-  return [note, activity.amount].filter(Boolean).join(' · ');
+  const duration = typeof activity.amount === 'string'
+    ? activity.amount.replace(/(\d+(?:\.\d+)?)\s*(小时|hours?|hrs?)/gi, '$1h').replace(/(\d+(?:\.\d+)?)\s*(分钟|minutes?|mins?)/gi, '$1min')
+    : activity.amount;
+  return [note, duration].filter(Boolean).join(' · ');
 }
 
 function AuthPanel({ language }) {
@@ -558,23 +562,9 @@ function App() {
       window.setTimeout(() => setToast(''), 2200);
     }
   };
-  const createActivity = (kind) => {
-    const activity = { kind, at: new Date().toISOString(), detail: defaultDetail(kind) };
-    if (kind === 'feed') {
-      activity.detail = 'Feed';
-      activity.breastfeeding = Boolean(lastFeed?.breastfeeding);
-      activity.formulaAmount = null;
-      activity.breastmilkAmount = null;
-    } else if (kind === 'diaper') {
-      activity.detail = 'Wet:false|Poop:true|Amount:';
-    } else if (kind === 'pump') {
-      activity.detail = 'Pumping session';
-      activity.amount = null;
-    } else if (kind === 'sleep') {
-      activity.detail = 'Sleep';
-      activity.amount = '';
-    }
-    logActivity(activity);
+  const createActivity = kind => {
+    setEditingActivity(null);
+    setActiveKind(kind);
   };
   const removeActivity = async (id) => {
     const next = activities.filter(item => item.id !== id);
@@ -604,7 +594,7 @@ function App() {
           <Menu size={23} strokeWidth={1.9} aria-hidden="true" />
         </button>
         {accountMenuOpen && <div className="account-dropdown" role="menu" aria-label={tr(language, 'accountMenu')}>
-          {[['#growth-chart', 'Growth chart', '生长曲线'], ['#baby-profile', 'Baby profile', '宝宝档案']].map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
+          {[['#top', 'Feeding records', '喂养记录'], ['#growth-chart', 'Growth chart', '生长曲线'], ['#baby-profile', 'Baby profile', '宝宝档案']].map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
           {user && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setAccountSubmenu(null); profilePictureInputRef.current?.click(); }}>{tr(language, 'profilePicture')}</button>}
           <div className="account-submenu-wrap">
             <button type="button" role="menuitem" className="account-menu-action" aria-haspopup="menu" aria-expanded={accountSubmenu === 'language'} onClick={() => setAccountSubmenu(value => value === 'language' ? null : 'language')}><span>{tr(language, 'language')}</span><span className="account-current-value">{tr(language, language === 'zh' ? 'chinese' : 'english')}</span></button>
@@ -615,7 +605,7 @@ function App() {
           <div className="account-submenu-wrap">
             <button type="button" role="menuitem" className="account-menu-action" aria-haspopup="menu" aria-expanded={accountSubmenu === 'quick-actions'} onClick={() => setAccountSubmenu(value => value === 'quick-actions' ? null : 'quick-actions')}><span>{tr(language, 'customize')}</span></button>
             {accountSubmenu === 'quick-actions' && <div className="account-submenu" role="menu" aria-label={tr(language, 'quickActions')}>
-              {Object.keys(kinds).map(kind => <button key={kind} type="button" role="menuitemcheckbox" aria-checked={quickActions.includes(kind)} disabled={quickActions.length === 1 && quickActions.includes(kind)} onClick={() => toggleQuickAction(kind)}><span>{tr(language, kind)}</span></button>)}
+              {Object.keys(kinds).map(kind => <button key={kind} type="button" role="menuitemcheckbox" aria-checked={quickActions.includes(kind)} disabled={quickActions.length === 1 && quickActions.includes(kind)} onClick={() => toggleQuickAction(kind)}><span>{tr(language, kind)}</span>{quickActions.includes(kind) && <Check size={16} aria-hidden="true" />}</button>)}
             </div>}
           </div>
           {user && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); supabase.auth.signOut(); }}>{tr(language, 'signOut')}</button>}
@@ -627,19 +617,17 @@ function App() {
       page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()} /> :
     <main id="top" className="page-wrap">
       <section className="quick-section" aria-labelledby="quick-heading">
-        <div className="section-heading"><h2 id="quick-heading">{tr(language, 'quickActions')}</h2></div>
-        <div className="quick-grid" style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(quickActions.length, 4))}, minmax(0, 1fr))` }}>
-          {Object.entries(kinds).filter(([kind]) => quickActions.includes(kind)).map(([kind, item]) => {
-            const Icon = item.icon;
-            return <Button key={kind} variant="outline" className={`quick-action ${item.tint}`} onClick={() => createActivity(kind)}>
-              <span className="quick-icon"><span className="quick-emoji-icon" aria-hidden="true">{quickActionEmoji[kind]}</span></span><span className="quick-label">{tr(language, kind)}</span>
-            </Button>;
-          })}
+        <div className="section-heading"><h2 id="quick-heading" className="page-title">{tr(language, 'feedingRecords')}</h2></div>
+        <div className="quick-grid">
+          {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind =>
+            <Button key={kind} className={`quick-action${kind === 'diaper' ? ' quick-action-diaper' : ''}`} onClick={() => createActivity(kind)}>
+              <Plus size={17} aria-hidden="true" /><span>{tr(language, kind)}</span>
+            </Button>
+          )}
         </div>
       </section>
 
-      <section className="quick-section recent-section" aria-labelledby="recent-heading">
-        <div className="section-heading"><h2 id="recent-heading">{tr(language, 'recentActivity')}</h2></div>
+      <section className="quick-section recent-section" aria-label={tr(language, 'recentActivity')}>
         <div className="activity-list">
             {visibleActivities.map((activity, index) => {
               const subtitle = activitySubtitle(activity, language);
@@ -647,11 +635,11 @@ function App() {
               const previousDay = index ? localDateValue(new Date(visibleActivities[index - 1].at)) : null;
               const nextDay = index < visibleActivities.length - 1 ? localDateValue(new Date(visibleActivities[index + 1].at)) : null;
               return <React.Fragment key={activity.id}>
-                {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day)}</span></div>}
-                <article className="activity-row" role="button" tabIndex={0} onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
+                {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day, language)}</span></div>}
+                <article className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0} onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
                   <ActivityIcon kind={activity.kind} emoji recent />
                   {nextDay === day && <span className="timeline-line"/>}
-                  <div className="activity-copy"><div className="activity-title"><strong>{tr(language, activity.kind)}</strong><span className="activity-time">{timeAgo(activity.at, language)}</span></div>{subtitle && <div className="activity-detail">{subtitle}</div>}</div>
+                  <div className="activity-copy"><div className="activity-title"><strong>{tr(language, activity.kind)}</strong><span className="activity-time">{formatRecordTime(activity.at, language)}</span></div>{subtitle && <div className="activity-detail">{subtitle}</div>}</div>
                 </article>
               </React.Fragment>;
             })}

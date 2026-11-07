@@ -19,7 +19,7 @@ function MeasurementDateInput({ zh, initialDate }) {
   const [date, setDate] = useState(initialDate);
   return <label>{zh ? '测量日期' : 'Measurement date'}
     <span className="growth-date-field">
-      <span aria-hidden="true">{date ? formatAppDate(date) : (zh ? '选择日期' : 'Select date')}</span>
+      <span aria-hidden="true">{date ? formatAppDate(date, zh ? 'zh' : 'en') : (zh ? '选择日期' : 'Select date')}</span>
       <input type="date" name="measured_on" min={baby.birthDate} defaultValue={initialDate} onInput={event => setDate(event.currentTarget.value)} />
     </span>
   </label>;
@@ -49,7 +49,7 @@ function BabyPage({ title, language, children }) {
   return <main className="page-wrap baby-page">
     <div className="baby-page-heading">
       <a className="baby-back" href="#top" aria-label={language === 'zh' ? '返回首页' : 'Back to home'}><ChevronLeft size={22} aria-hidden="true" /></a>
-      <h1>{title}</h1>
+      <h1 className="page-title">{title}</h1>
     </div>
     {children}
   </main>;
@@ -68,7 +68,7 @@ export function BabyProfile({ language, avatar, onUpload }) {
       </div>
       <dl>
         <dt>{zh ? '姓名' : 'Name'}</dt><dd>{baby.name}</dd>
-        <dt>{zh ? '生日' : 'Date of birth'}</dt><dd><time dateTime={baby.birthDate}>{formatAppDate(baby.birthDate)}</time></dd>
+        <dt>{zh ? '生日' : 'Date of birth'}</dt><dd><time dateTime={baby.birthDate}>{formatAppDate(baby.birthDate, language)}</time></dd>
         <dt>{zh ? '性别' : 'Sex'}</dt><dd>{zh ? '女' : 'Female'}</dd>
       </dl>
     </section>
@@ -139,7 +139,7 @@ function GrowthPlot({ records, language, standard, metric }) {
       )}
       <text x="215" y="252" textAnchor="middle">{zh ? '日龄（天）' : 'Age (days)'}</text>
       <polyline points={points.map(({ day, value }) => `${x(day)},${y(value)}`).join(' ')} fill="none" stroke="#34333b" strokeWidth="1.5" />
-      {points.map(({ id, day, value, date }) => <circle key={id} cx={x(day)} cy={y(value)} r="3.7" fill="#34333b" stroke="white"><title>{`${formatAppDate(date)}: ${Number(value.toFixed(2))} ${unit}`}</title></circle>)}
+      {points.map(({ id, day, value, date }) => <circle key={id} cx={x(day)} cy={y(value)} r="3.7" fill="#34333b" stroke="white"><title>{`${formatAppDate(date, language)}: ${Number(value.toFixed(2))} ${unit}`}</title></circle>)}
     </svg>
   </section>;
 }

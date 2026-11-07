@@ -45,7 +45,7 @@ button { cursor: pointer; }
 .account-current-value { color: #85818a; font-size: 15px; font-weight: 500; }
 .account-submenu { position: absolute; z-index: 31; top: -8px; right: calc(100% + 8px); display: flex; width: 180px; flex-direction: column; gap: 3px; padding: 7px; border: 1px solid var(--border); border-radius: 11px; background: white; box-shadow: 0 8px 28px #292b3418; }
 .account-dropdown .account-submenu button { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-.account-dropdown .account-submenu button[aria-checked="true"] { color: #67569e; }
+.account-dropdown .account-submenu button[role="menuitemradio"][aria-checked="true"] { color: #67569e; }
 .account-dropdown .account-submenu button:disabled { color: #b5b1b8; cursor: not-allowed; }
 .profile-picture-input { display: none !important; }
 .page-wrap { width: min(100% - 40px, 700px); margin: 0 auto; }
@@ -56,7 +56,7 @@ button { cursor: pointer; }
 .recent-section .activity-list { margin-top: 17px; }
 .section-heading, .feed-heading { display: flex; align-items: center; justify-content: space-between; }
 .section-heading h2, .feed-heading h2 { margin: 0; font: 700 20px Manrope, sans-serif; letter-spacing: -.45px; }
-.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 17px; }
+.quick-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 17px; }
 .ui-button { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; border: 1px solid transparent; border-radius: 8px; font-size: 18px; font-weight: 600; transition: background .16s ease, border .16s ease, transform .16s ease; }
 .ui-button:focus-visible, .filter-chip:focus-visible, .delete-activity:focus-visible { outline: 2px solid #9381ce; outline-offset: 2px; }
 .ui-button:disabled { pointer-events: none; opacity: .5; }
@@ -69,7 +69,7 @@ button { cursor: pointer; }
 .button-ghost:hover { background: #f5f3f0; }
 .button-sm { min-height: 40px; padding: 0 12px; border-radius: 7px; font-size: 18px; }
 .button-icon { width: 36px; height: 36px; }
-.quick-action { height: 105px; padding: 14px; display: flex; justify-content: flex-start; align-items: flex-start; flex-direction: column; position: relative; gap: 10px; border-radius: 12px; box-shadow: none; }
+.quick-action { min-height: 40px; height: auto; padding: 8px 14px; display: inline-flex; justify-content: center; align-items: center; gap: 5px; border-radius: 10px; box-shadow: none; }
 .quick-action:hover { transform: translateY(-2px); }
 .quick-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 12px; }
 .quick-emoji-icon { font-size: 21px; line-height: 1; }
@@ -127,7 +127,6 @@ button { cursor: pointer; }
 .dialog-header .activity-icon { grid-row: auto; }
 .dialog-header h2 { margin: 0; font: 700 20px Manrope, sans-serif; letter-spacing: -.3px; }
 .dialog-header p { margin: 4px 25px 0 0; color: #929098; font-size: 18px; line-height: 1.5; }
-.autosave-hint { margin: 7px 0 -7px 47px; color: #929098; font-size: 14px; }
 .profile-crop-dialog { width: min(380px, calc(100vw - 24px)); padding: 20px; }
 .profile-crop-dialog .dialog-header { display: block; }
 .profile-crop-dialog .dialog-header h2 { padding-right: 28px; }
@@ -211,7 +210,7 @@ button { cursor: pointer; }
   .quick-section { margin-top: 28px; }
   .section-heading h2, .feed-heading h2 { font-size: 18px; }
   .quick-grid { gap: 8px; }
-  .quick-action { height: 91px; padding: 10px; gap: 8px; }
+
   .quick-icon { width: 34px; height: 34px; }
   .quick-icon svg { width: 20px; height: 20px; }
   .quick-label { font-size: 18px; }
@@ -280,7 +279,7 @@ button { cursor: pointer; }
 }
 
 .baby-page { display: grid; gap: 16px; }
-.baby-page h1 { font: 800 1.65rem Manrope, sans-serif; }
+.page-title, .section-heading .page-title { margin: 0; font: 800 24px/1.3 Manrope, sans-serif; letter-spacing: -.45px; }
 .baby-page h2 { font-size: 1rem; font-weight: 700; }
 .baby-page > button { justify-self: start; }
 .baby-panel { padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
@@ -325,3 +324,10 @@ button { cursor: pointer; }
 
 .baby-photo-actions { position: relative; flex: none; }
 .baby-photo-actions .baby-photo-camera { position: absolute; right: -4px; bottom: -4px; width: 34px; height: 34px; min-height: 34px; padding: 0; border: 2px solid white; border-radius: 50%; }
+
+.quick-action.button-default { background: #67539c; color: white; border-color: #67539c; }
+.quick-action.button-default:hover { background: #574585; border-color: #574585; }
+.activity-row.activity-group-end { border-bottom: 0; }
+
+.quick-action-diaper.button-default { background: #936447; border-color: #936447; }
+.quick-action-diaper.button-default:hover { background: #7b523b; border-color: #7b523b; }
