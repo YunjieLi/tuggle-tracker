@@ -325,9 +325,14 @@ button { cursor: pointer; }
 .baby-photo-actions { position: relative; flex: none; }
 .baby-photo-actions .baby-photo-camera { position: absolute; right: -4px; bottom: -4px; width: 34px; height: 34px; min-height: 34px; padding: 0; border: 2px solid white; border-radius: 50%; }
 
-.quick-action.button-default { background: #67539c; color: white; border-color: #67539c; }
-.quick-action.button-default:hover { background: #574585; border-color: #574585; }
 .activity-row.activity-group-end { border-bottom: 0; }
 
-.quick-action-diaper.button-default { background: #936447; border-color: #936447; }
-.quick-action-diaper.button-default:hover { background: #7b523b; border-color: #7b523b; }
+
+/* Event colors shared by record icons, dialog icons, and quick actions. */
+.event-feed { --event-color: #356a94; --event-soft: #eaf1f5; }
+.event-diaper { --event-color: #8a6612; --event-soft: #fcf4d9; }
+.event-sleep { --event-color: #67539c; --event-soft: #f0eaf7; }
+.event-pump { --event-color: #ae4c59; --event-soft: #fae9ec; }
+.activity-icon[class*="event-"] { background: var(--event-soft); color: var(--event-color); }
+.quick-action.button-default { background: var(--event-soft); border-color: var(--event-soft); color: var(--event-color); }
+.quick-action.button-default:hover { background: var(--event-soft); border-color: var(--event-color); }

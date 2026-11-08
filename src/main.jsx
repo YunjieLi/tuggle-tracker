@@ -15,7 +15,7 @@ const LANGUAGE_KEY = 'little-days.language.v1';
 const LOCAL_PROFILE_PICTURE_KEY = 'little-days.profile-picture';
 const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const DEFAULT_QUICK_ACTIONS = ['feed', 'diaper'];
-const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '💩', sleep: '😴' };
+const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '🍩', sleep: '🪻' };
 const translations = {
   en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Little Days home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', diaperAmount: 'Diaper amount', wet: 'Pee', poop: 'Poop', small: 'Small', medium: 'Medium', large: 'Large', duration: 'Duration', note: 'Note', addNote: 'Add a note…', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', sleepDurationPlaceholder: 'e.g. 45 min', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
   zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Little Days 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', diaperAmount: '尿布量', wet: '尿尿', poop: '臭臭', small: '少', medium: '中', large: '多', duration: '时长', note: '备注', addNote: '添加备注…', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', sleepDurationPlaceholder: '例如：45 min', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
@@ -59,7 +59,7 @@ function getQuickActions() {
 
 function ActivityIcon({ kind, size = 17, emoji = false, recent = false }) {
   const Icon = kinds[kind].icon;
-  return <span className={`activity-icon ${kinds[kind].tint} ${recent ? 'activity-icon-recent' : ''}`}>{emoji ? <span aria-hidden="true">{quickActionEmoji[kind]}</span> : <Icon size={size} strokeWidth={1.8} />}</span>;
+  return <span className={`activity-icon event-${kind} ${recent ? 'activity-icon-recent' : ''}`}>{emoji ? <span aria-hidden="true">{quickActionEmoji[kind]}</span> : <Icon size={size} strokeWidth={1.8} />}</span>;
 }
 
 function getTimeSlot(date = new Date()) {
@@ -620,7 +620,7 @@ function App() {
         <div className="section-heading"><h2 id="quick-heading" className="page-title">{tr(language, 'feedingRecords')}</h2></div>
         <div className="quick-grid">
           {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind =>
-            <Button key={kind} className={`quick-action${kind === 'diaper' ? ' quick-action-diaper' : ''}`} onClick={() => createActivity(kind)}>
+            <Button key={kind} className={`quick-action event-${kind}`} onClick={() => createActivity(kind)}>
               <Plus size={17} aria-hidden="true" /><span>{tr(language, kind)}</span>
             </Button>
           )}
