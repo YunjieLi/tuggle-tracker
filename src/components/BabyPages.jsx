@@ -19,7 +19,7 @@ function MeasurementDateInput({ zh, initialDate }) {
   const [date, setDate] = useState(initialDate);
   return <label>{zh ? '测量日期' : 'Measurement date'}
     <span className="growth-date-field">
-      <span aria-hidden="true">{date ? formatAppDate(date, zh ? 'zh' : 'en') : (zh ? '选择日期' : 'Select date')}</span>
+      <span aria-hidden="true">{date ? formatAppDate(date, zh ? 'zh' : 'en') : ''}</span>
       <input type="date" name="measured_on" min={baby.birthDate} defaultValue={initialDate} onInput={event => setDate(event.currentTarget.value)} />
     </span>
   </label>;
@@ -35,17 +35,18 @@ function MeasurementInput({ field, zh, value }) {
     <label htmlFor={key}>{label}</label>
     <div className="growth-measurement-inputs">
       <div className="growth-unit-field">
-        <input id={key} name={key} defaultValue={value ?? ''} type="number" inputMode={mixed ? 'numeric' : 'decimal'} min={mixed ? '0' : '0.01'} step={mixed ? '1' : 'any'} placeholder={mixed ? 'lb' : undefined} />
+        <input id={key} name={key} defaultValue={value ?? ''} type="number" inputMode={mixed ? 'numeric' : 'decimal'} min={mixed ? '0' : '0.01'} step={mixed ? '1' : 'any'} />
+        {mixed && <span aria-hidden="true" className="measurement-unit">lb</span>}
         <select name={key + '_unit'} aria-label={label + (zh ? '单位' : ' unit')} value={unit} onChange={event => setUnit(event.target.value)}>
           {units.map(option => <option key={option}>{option}</option>)}
         </select>
       </div>
-      {mixed && <input name="weight_oz" aria-label={zh ? '体重（盎司）' : 'Weight (oz)'} placeholder="oz" type="number" inputMode="decimal" min="0" max="15.999999" step="any" />}
+      {mixed && <div className="growth-unit-field"><input name="weight_oz" aria-label={zh ? '体重（盎司）' : 'Weight (oz)'} type="number" inputMode="decimal" min="0" max="15.999999" step="any" /><span aria-hidden="true" className="measurement-unit">oz</span></div>}
     </div>
   </div>;
 }
 
-function BabyPage({ title, language, children }) {
+export function BabyPage({ title, language, children }) {
   return <main className="page-wrap baby-page">
     <div className="baby-page-heading">
       <a className="baby-back" href="#top" aria-label={language === 'zh' ? '返回首页' : 'Back to home'}><ChevronLeft size={22} aria-hidden="true" /></a>
@@ -55,7 +56,7 @@ function BabyPage({ title, language, children }) {
   </main>;
 }
 
-export function BabyProfile({ language, avatar, onUpload }) {
+export function BabyProfile({ language, avatar, onUpload, children }) {
   const zh = language === 'zh';
   return <BabyPage title={zh ? '宝宝档案' : 'Baby profile'} language={language}>
     <section className="baby-panel baby-details">
@@ -72,6 +73,7 @@ export function BabyProfile({ language, avatar, onUpload }) {
         <dt>{zh ? '性别' : 'Sex'}</dt><dd>{zh ? '女' : 'Female'}</dd>
       </dl>
     </section>
+    {children}
   </BabyPage>;
 }
 
