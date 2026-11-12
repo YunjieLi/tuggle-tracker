@@ -2,6 +2,7 @@ import { formatAppDate, formatRecordTime, localDateValue } from './lib/dates';
 import { baby } from './lib/growth';
 import { BabyProfile, GrowthChart } from './components/BabyPages';
 import { FeedingReport } from './components/FeedingReport';
+import { FeedingImport } from './components/FeedingImport';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Baby, Check, Droplets, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
@@ -37,7 +38,7 @@ const kinds = {
 };
 const ago = (mins) => new Date(Date.now() - mins * 60_000).toISOString();
 const initialActivities = [
-  { id: 'sample-1', kind: 'feed', at: ago(34), detail: 'Feed', formulaAmount: 60, breastmilkAmount: 30, breastfeeding: true },
+  { id: 'sample-1', kind: 'feed', at: ago(34), detail: 'Feed', formulaAmount: 60, breastmilkAmount: 30 },
   { id: 'sample-2', kind: 'diaper', at: ago(92), detail: 'Wet diaper', amount: '' },
   { id: 'sample-3', kind: 'sleep', at: ago(158), detail: 'Nap', amount: '1 hr 12 min' },
   { id: 'sample-4', kind: 'pump', at: ago(241), detail: 'Pumping session', amount: 120 },
@@ -254,12 +255,16 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     if (!open) return;
     dirtyRef.current = false;
     versionRef.current += 1;
-    const start = activity && kind === 'sleep'
+    const start = activity && (kind === 'sleep' || kind === 'feed')
       ? new Date(activity.at).toTimeString().slice(0, 5)
       : (activity ? getTimeSlot(new Date(activity.at)) : getTimeSlot());
     setTime(start);
     setDurationInput(null);
-    setSleepEnd(kind === 'sleep' ? sleepEndTime(start, sleepDurationMinutes(activity?.amount)) : '');
+    if (kind === 'sleep') {
+      setSleepEnd(activity ? sleepEndTime(start, sleepDurationMinutes(activity.amount)) : start);
+    } else {
+      setSleepEnd('');
+    }
     setDate(activity ? localDateValue(new Date(activity.at)) : localDateValue());
     if (kind === 'diaper') {
       const diaperState = activity ? readDiaperState(activity.detail || '') : { wet: false, poop: true, amount: '' };
@@ -358,7 +363,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
         <div className="time-field-group">
           <label className="time-picker-row">
             {tr(language, kind === 'sleep' ? 'sleepStart' : 'time')}
-            <input type="time" step={kind === 'sleep' ? 60 : 600} className={time ? undefined : 'empty-time'} value={time} required onChange={event => {
+            <input type="time" step={kind === 'sleep' || kind === 'feed' ? 60 : 600} className={time ? undefined : 'empty-time'} value={time} required onChange={event => {
               if (kind === 'sleep' && sleepEnd) {
                 changeSleepTime(event.target.value, sleepEnd);
               } else {
@@ -428,13 +433,13 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
   </Dialog>;
 }
 
-function activitySubtitle(activity, language) {
+function activitySubtitle(activity, language, feedingMethods) {
   const note = activity.note?.trim() || (activity.kind === 'sleep' && activity.detail && activity.detail !== 'Sleep' ? activity.detail.trim() : '');
   if (activity.kind === 'feed') {
     return [
-      activity.formulaAmount != null && `${tr(language, 'formula')} ${activity.formulaAmount} ${tr(language, 'ml')}`,
-      activity.breastmilkAmount != null && `${tr(language, 'breastmilk')} ${activity.breastmilkAmount} ${tr(language, 'ml')}`,
-      activity.breastfeeding && tr(language, 'directNursing'),
+      Number(activity.formulaAmount) > 0 && `${tr(language, 'formula')} ${activity.formulaAmount} ${tr(language, 'ml')}`,
+      Number(activity.breastmilkAmount) > 0 && `${tr(language, 'breastmilk')} ${activity.breastmilkAmount} ${tr(language, 'ml')}`,
+      feedingMethods.includes('breastfeeding') && activity.breastfeeding && tr(language, 'directNursing'),
       note,
     ].filter(Boolean).join(' · ');
   }
@@ -494,6 +499,7 @@ function App() {
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) === 'en' ? 'en' : 'zh');
   const [feedingMethods, setFeedingMethods] = useState(getFeedingMethods);
   const [user, setUser] = useState(null);
+  const userId = user?.id;
   const [accountUsername, setAccountUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [cropSource, setCropSource] = useState('');
@@ -626,33 +632,35 @@ function App() {
     };
   }, []);
   useEffect(() => {
-    if (!supabase || !user) return undefined;
+    if (!supabase || !userId) return undefined;
     let active = true;
     setActivities([]);
+    setLoadedActivitiesUserId(null);
     const loadActivities = async () => {
       const { data, error } = await supabase
         .from('baby_activities')
         .select('*')
+        .eq('user_id', userId)
         .order('occurred_at', { ascending: false });
       if (!active) return;
-      setLoadedActivitiesUserId(user.id);
+      setLoadedActivitiesUserId(userId);
       if (error) {
-        setActivities(getStoredActivities(`${STORAGE_KEY}.${user.id}`));
+        setActivities(getStoredActivities(`${STORAGE_KEY}.${userId}`));
         setToast(`${tr(language, 'loadActivitiesFailed')}: ${error.message}`);
         return;
       }
       if (data.length) {
         const loaded = data.map(activityFromRow);
         setActivities(loaded);
-        localStorage.setItem(`${STORAGE_KEY}.${user.id}`, JSON.stringify(loaded));
+        localStorage.setItem(`${STORAGE_KEY}.${userId}`, JSON.stringify(loaded));
         return;
       }
       setActivities([]);
-      localStorage.setItem(`${STORAGE_KEY}.${user.id}`, '[]');
+      localStorage.setItem(`${STORAGE_KEY}.${userId}`, '[]');
     };
     loadActivities();
     return () => { active = false; };
-  }, [user]);
+  }, [userId]);
   useEffect(() => {
     if (!supabase || !user) {
       setAccountUsername('');
@@ -693,6 +701,40 @@ function App() {
     setEditingActivity(null);
     setActiveKind(kind);
   };
+  const importFeedingRecords = async records => {
+    const storageKey = user ? `${STORAGE_KEY}.${user.id}` : STORAGE_KEY;
+    const recordKey = record => JSON.stringify([
+      new Date(record.at).getTime(), Number(record.breastmilkAmount ?? 0), Number(record.formulaAmount ?? 0),
+    ]);
+    const existing = new Map(activities.filter(record => record.kind === 'feed' && !record.breastfeeding)
+      .map(record => [recordKey(record), record]));
+    const added = [];
+    const matched = records.map(record => {
+      const key = recordKey(record);
+      if (existing.has(key)) return existing.get(key);
+      existing.set(key, record);
+      added.push(record);
+      return record;
+    });
+    const next = [...added, ...activities];
+    if (added.length && supabase && user) {
+      const { error } = await supabase.from('baby_activities')
+        .upsert(added.map(record => activityToRow(record, user.id)), { ignoreDuplicates: true });
+      if (error) throw error;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch { /* The database write already succeeded. */ }
+    } else if (added.length) {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+    }
+    if (added.length) setActivities(next);
+    const skipped = records.length - added.length;
+    const result = language === 'zh' ? `已导入 ${added.length} 笔喂奶记录` : `Imported ${added.length} feeding records`;
+    const duplicates = language === 'zh' ? `，跳过 ${skipped} 笔重复记录` : `, skipped ${skipped} duplicates`;
+    setToast(skipped ? result + duplicates : result);
+    window.setTimeout(() => setToast(''), 2200);
+    return matched.reduce((latest, record) => new Date(record.at) > new Date(latest.at) ? record : latest).id;
+  };
   const removeActivity = async (id) => {
     const next = activities.filter(item => item.id !== id);
     setActivities(next);
@@ -722,8 +764,6 @@ function App() {
         </button>
         {accountMenuOpen && <div className="account-dropdown" role="menu" aria-label={tr(language, 'accountMenu')}>
           {[['#top', 'Feeding records', '喂养记录'], ['#feeding-report', 'Data report', '数据简报'], ['#growth-chart', 'Growth chart', '生长曲线'], ['#baby-profile', 'Baby profile', '宝宝档案']].map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
-          {user && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); profilePictureInputRef.current?.click(); }}>{tr(language, 'profilePicture')}</button>}
-          {user && <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); supabase.auth.signOut(); }}>{tr(language, 'signOut')}</button>}
         </div>}
         <input ref={profilePictureInputRef} className="profile-picture-input" type="file" accept="image/*" onChange={handleProfilePictureFile} />
       </div>
@@ -731,55 +771,72 @@ function App() {
     {page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
       page === '#feeding-report' ? <FeedingReport language={language} activities={activities} loading={Boolean(user && loadedActivitiesUserId !== user.id)} /> :
       page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()}>
-        <section className="baby-panel profile-settings" aria-labelledby="profile-settings-title">
+        <section className="profile-settings-section" aria-labelledby="profile-settings-title">
           <h2 id="profile-settings-title">{tr(language, 'settings')}</h2>
-          <label className="profile-language">
-            {tr(language, 'language')}
-            <select value={language} onChange={event => changeLanguage(event.target.value)}>
-              <option value="zh">{tr(language, 'chinese')}</option>
-              <option value="en">{tr(language, 'english')}</option>
-            </select>
-          </label>
-          <fieldset>
-            <legend>{tr(language, 'quickActions')}</legend>
-            {Object.keys(kinds).map(kind => <EventToggle key={kind} label={tr(language, kind)}
-              checked={quickActions.includes(kind)} disabled={quickActions.length === 1 && quickActions.includes(kind)}
-              onChange={() => toggleQuickAction(kind)} />)}
-          </fieldset>
-          <fieldset>
-            <legend>{tr(language, 'feedingMethods')}</legend>
-            {Object.entries(feedingMethodLabels).map(([method, label]) => <EventToggle key={method}
-              label={tr(language, label)} checked={feedingMethods.includes(method)} onChange={() => toggleFeedingMethod(method)} />)}
-          </fieldset>
+          <div className="baby-panel profile-settings">
+            <label className="profile-language">
+              {tr(language, 'language')}
+              <select value={language} onChange={event => changeLanguage(event.target.value)}>
+                <option value="zh">{tr(language, 'chinese')}</option>
+                <option value="en">{tr(language, 'english')}</option>
+              </select>
+            </label>
+            <fieldset>
+              <legend>{tr(language, 'quickActions')}</legend>
+              {Object.keys(kinds).map(kind => <EventToggle key={kind} label={tr(language, kind)}
+                checked={quickActions.includes(kind)} disabled={quickActions.length === 1 && quickActions.includes(kind)}
+                onChange={() => toggleQuickAction(kind)} />)}
+            </fieldset>
+            <fieldset>
+              <legend>{tr(language, 'feedingMethods')}</legend>
+              {Object.entries(feedingMethodLabels).map(([method, label]) => <EventToggle key={method}
+                label={tr(language, label)} checked={feedingMethods.includes(method)} onChange={() => toggleFeedingMethod(method)} />)}
+            </fieldset>
+          </div>
         </section>
+        {user && <button type="button" className="profile-sign-out" onClick={() => supabase.auth.signOut()}>
+          {tr(language, 'signOut')}
+        </button>}
       </BabyProfile> :
     <main id="top" className="page-wrap">
       <section className="quick-section" aria-labelledby="quick-heading">
         <div className="section-heading"><h2 id="quick-heading" className="page-title">{tr(language, 'feedingRecords')}</h2></div>
         <div className="quick-grid">
-          {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind =>
-            <Button key={kind} className={`quick-action event-${kind}`} onClick={() => createActivity(kind)}>
+          {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind => {
+            const action = <Button key={kind} className={`quick-action event-${kind}`} onClick={() => createActivity(kind)}>
               <Plus size={17} aria-hidden="true" />
               <span aria-hidden="true">{quickActionEmoji[kind]}</span>
               <span>{tr(language, kind)}</span>
-            </Button>
-          )}
+            </Button>;
+            if (kind !== 'feed') return action;
+            return <div key={kind} className="feed-quick-actions event-feed" role="group" aria-label={tr(language, 'feed')}>
+              {action}
+              <FeedingImport language={language} onImport={importFeedingRecords}
+                disabled={Boolean(user && loadedActivitiesUserId !== user.id)} />
+            </div>;
+          })}
         </div>
       </section>
 
       <section className="quick-section recent-section" aria-label={tr(language, 'recentActivity')}>
         <div className="activity-list">
             {visibleActivities.map((activity, index) => {
-              const subtitle = activitySubtitle(activity, language);
+              const subtitle = activitySubtitle(activity, language, feedingMethods);
+              const timeLabel = formatRecordTime(activity.at, language);
               const day = localDateValue(new Date(activity.at));
               const previousDay = index ? localDateValue(new Date(visibleActivities[index - 1].at)) : null;
               const nextDay = index < visibleActivities.length - 1 ? localDateValue(new Date(visibleActivities[index + 1].at)) : null;
               return <React.Fragment key={activity.id}>
-                {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day, language)}</span></div>}
-                <article className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0} onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
+                {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day, language, undefined, { showWeekday: true })}</span></div>}
+                <article id={`activity-${activity.id}`} className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0}
+                  aria-label={[tr(language, activity.kind), subtitle, timeLabel].filter(Boolean).join(' · ')}
+                  onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
                   <ActivityIcon kind={activity.kind} emoji recent />
                   {nextDay === day && <span className="timeline-line"/>}
-                  <div className="activity-copy"><div className="activity-title"><strong>{tr(language, activity.kind)}</strong><span className="activity-time">{formatRecordTime(activity.at, language)}</span></div>{subtitle && <div className="activity-detail">{subtitle}</div>}</div>
+                  <div className="activity-copy activity-summary">
+                    <span className="activity-detail">{subtitle}</span>
+                    <span className="activity-time">{timeLabel}</span>
+                  </div>
                 </article>
               </React.Fragment>;
             })}

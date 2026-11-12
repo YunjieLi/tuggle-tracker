@@ -107,6 +107,8 @@ button { cursor: pointer; }
 .activity-title strong { display: inline-flex; align-items: center; gap: 8px; color: #3b3942; font-size: 18px; font-weight: 600; }
 .activity-time { flex: none; color: #77747d; font-size: 18px; }
 .activity-detail { margin-top: 6px; color: #706d76; font-size: 18px; }
+.activity-summary { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 8px; }
+.activity-summary .activity-detail { margin-top: 0; min-width: 0; overflow-wrap: anywhere; color: var(--foreground); }
 .detail-dot { padding: 0 6px; color: #c1bec3; }
 .delete-activity { display: grid; place-items: center; margin-top: 6px; padding: 3px; border: 0; background: none; color: #c7c3c7; opacity: 0; transition: opacity .15s; }
 .activity-row:hover .delete-activity, .delete-activity:focus-visible { opacity: 1; }
@@ -320,6 +322,8 @@ button { cursor: pointer; }
 .baby-photo-actions .baby-photo-camera { position: absolute; right: -4px; bottom: -4px; width: 34px; height: 34px; min-height: 34px; padding: 0; border: 2px solid white; border-radius: 50%; }
 
 .activity-row.activity-group-end { border-bottom: 0; }
+.recent-section .activity-row { min-height: 54px; padding-block: 8px; }
+.recent-section .timeline-line { top: 48px; }
 
 
 /* Event colors shared by record icons, dialog icons, and quick actions. */
@@ -333,12 +337,17 @@ button { cursor: pointer; }
 
 .feeding-report { display: grid; gap: 16px; min-width: 0; }
 .feeding-report h2 { margin: 0; }
+.feeding-report-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.feeding-range { width: 92px; flex: none; }
+.feeding-range button { height: 30px; }
 .feeding-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; color: #625e6b; font-size: .85rem; }
 .feeding-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .feeding-legend i { width: 10px; height: 10px; border-radius: 3px; }
 .feeding-breastmilk { background: var(--primary); }
-.feeding-formula { background: var(--secondary); }
+.feeding-formula { background: #4e9acb; }
 .feeding-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.feeding-chart-scroll { min-width: 0; overflow-x: auto; }
+.feeding-chart-month { grid-template-columns: repeat(30, minmax(48px, 1fr)); }
 .feeding-chart-day { display: grid; gap: 6px; text-align: center; font-size: .72rem; font-variant-numeric: tabular-nums; }
 .feeding-bar-track { display: flex; height: 160px; padding-top: 22px; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--border); }
 .feeding-bar { position: relative; display: flex; flex-direction: column; width: min(75%, 42px); }
@@ -349,13 +358,16 @@ button { cursor: pointer; }
 .feeding-table tbody th { font-weight: 400; }
 
 .profile-settings { display: grid; gap: 16px; }
-.profile-settings h2 { margin: 0; }
+.profile-settings-section > h2 { margin: 0 0 8px; }
 .profile-settings fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .profile-settings legend, .profile-language { font-weight: 700; }
 .profile-language { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .profile-language select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
 .profile-settings .event-toggle { min-height: 42px; font-size: 1rem; }
 .profile-settings .event-toggle:disabled { opacity: .55; cursor: default; }
+.baby-page > .profile-sign-out { justify-self: center; min-height: 44px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: #716e77; font-size: .8rem; }
+.profile-sign-out:hover { text-decoration: underline; }
+.profile-sign-out:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 .sleep-duration-row { display: grid; grid-template-columns: 40% minmax(0, 60%); align-items: center; color: #5e5b63; font-weight: 600; }
 .sleep-duration-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
@@ -365,3 +377,14 @@ button { cursor: pointer; }
 .duration-field > span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #716e77; font-weight: 400; pointer-events: none; }
 .empty-time:not(:focus)::-webkit-datetime-edit { color: transparent; }
 .measurement-unit { padding-right: 8px; color: #625e6b; }
+
+.feed-quick-actions { display: inline-flex; align-items: stretch; }
+.feed-quick-actions > .quick-action:first-child { border-radius: 10px 0 0 10px; }
+.feed-quick-actions > .feed-import-trigger { min-width: 44px; padding-inline: 9px; border-radius: 0 10px 10px 0; border-left-color: color-mix(in srgb, var(--event-color) 25%, var(--event-soft)); }
+.feed-quick-actions > .quick-action:hover { transform: none; filter: brightness(.96); }
+.feed-quick-actions > .quick-action:focus-visible { z-index: 1; }
+.feed-import-dialog .dialog-header { grid-template-columns: minmax(0, 1fr); padding-right: 32px; }
+.activity-sheet-content .feed-import-form > label { display: flex; align-items: stretch; gap: 6px; text-align: left; }
+.feed-import-form textarea { width: 100%; padding: 10px; border: 1px solid #e9e5e1; border-radius: 7px; background: #fff; color: #504d55; font: 1rem monospace; resize: vertical; }
+.feed-import-form .feed-import-example { background: #f7f5f2; font-size: .85rem; resize: none; }
+.feed-import-form textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
