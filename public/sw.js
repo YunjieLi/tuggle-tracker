@@ -1,10 +1,15 @@
 // Cache only the public offline screen. Account data stays on its existing path.
 const cachePrefix = 'little-days-offline-';
-const cacheName = cachePrefix + 'v2';
+const cacheName = cachePrefix + 'v3';
 const offlinePage = new URL('offline.html', self.registration.scope).href;
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(cacheName).then(cache => cache.add(new Request(offlinePage, { cache: 'reload' }))));
+  event.waitUntil((async () => {
+    const cache = await caches.open(cacheName);
+    await cache.add(new Request(offlinePage, { cache: 'reload' }));
+    // This worker only handles navigations and the offline page.
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -21,7 +26,7 @@ self.addEventListener('fetch', event => {
   if (request.mode !== 'navigate' || request.method !== 'GET' ||
       !request.url.startsWith(self.registration.scope)) return;
 
-  event.respondWith(fetch(request).catch(async () => {
+  event.respondWith(fetch(request, { cache: 'no-cache' }).catch(async () => {
     const cache = await caches.open(cacheName);
     return await cache.match(offlinePage) || Response.error();
   }));

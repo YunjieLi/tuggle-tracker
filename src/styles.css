@@ -141,7 +141,15 @@ button { cursor: pointer; }
 .activity-form label { display: flex; flex-direction: column; gap: 6px; color: #5e5b63; font-size: 18px; font-weight: 600; }
 .time-field-group { display: flex; flex-direction: column; gap: 2px; }
 .activity-form .time-picker-row { display: grid; grid-template-columns: 40% minmax(0, 60%); align-items: center; gap: 0; }
-.time-picker-row > input { width: 100%; min-width: 0; }
+.time-input-wrap { min-width: 0; }
+.time-input-wrap > input[type="time"] {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
 .event-date-row { position: relative; display: flex; justify-content: flex-end; width: 60%; margin-left: 40%; padding-right: 2px; }
 .date-edit-button { display: inline-flex; align-items: center; gap: 5px; padding: 2px 0; border: 0; color: #85818a; background: transparent; font-size: 14px; font-weight: 500; }
 .date-edit-button svg { color: #9381ce; }
@@ -466,3 +474,20 @@ body {
   :is(.dialog-overlay, .dialog-content) { animation: none; }
   .ui-button { transition: none; }
 }
+
+.release-notice {
+  position: fixed;
+  z-index: 40;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fffdfb;
+  box-shadow: 0 6px 20px #292b3418;
+  font-size: 14px;
+}
+.release-notice button { min-height: 44px; padding-inline: 8px; color: #69599f; font-weight: 700; }

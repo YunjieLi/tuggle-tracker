@@ -3,6 +3,7 @@ import { baby } from './lib/growth';
 import { BabyProfile, GrowthChart } from './components/BabyPages';
 import { FeedingReport } from './components/FeedingReport';
 import { ACTIVITY_PAGE_SIZE, fetchActivityPage } from './lib/activityQueries';
+import { ReleaseNotice } from './components/ReleaseNotice';
 import { InstallApp } from './components/InstallApp';
 import { observeDeviceSession } from './lib/deviceSession';
 import { FeedingImport } from './components/FeedingImport';
@@ -251,6 +252,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
   const [time, setTime] = useState(() => getTimeSlot());
   const [date, setDate] = useState(() => localDateValue());
   const dateInputRef = useRef(null);
+  const dialogTitleRef = useRef(null);
   const dirtyRef = useRef(false);
   const versionRef = useRef(0);
   const onSaveRef = useRef(onSave);
@@ -353,10 +355,13 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     if (!nextOpen) saveDraftRef.current();
     onOpenChange(nextOpen);
   }}>
-    {config && <DialogContent className="activity-sheet-content">
+    {config && <DialogContent className="activity-sheet-content" onOpenAutoFocus={event => {
+      event.preventDefault();
+      dialogTitleRef.current?.focus({ preventScroll: true });
+    }}>
       <DialogHeader>
         <ActivityIcon kind={kind} emoji recent />
-        <DialogTitle>{activity ? tr(language, 'edit') : tr(language, 'log')} {tr(language, kind).toLowerCase()}</DialogTitle>
+        <DialogTitle ref={dialogTitleRef} tabIndex={-1}>{activity ? tr(language, 'edit') : tr(language, 'log')} {tr(language, kind).toLowerCase()}</DialogTitle>
       </DialogHeader>
       <form className="activity-form" onSubmit={async event => {
         event.preventDefault();
@@ -373,7 +378,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
         <div className="time-field-group">
           <label className="time-picker-row">
             {tr(language, kind === 'sleep' ? 'sleepStart' : 'time')}
-            <input type="time" step={kind === 'sleep' || kind === 'feed' ? 60 : 600} className={time ? undefined : 'empty-time'} value={time} required onChange={event => {
+            <span className="time-input-wrap"><input type="time" step={kind === 'sleep' || kind === 'feed' ? 60 : 600} className={time ? undefined : 'empty-time'} value={time} required onChange={event => {
               if (kind === 'sleep' && sleepEnd) {
                 changeSleepTime(event.target.value, sleepEnd);
               } else {
@@ -381,7 +386,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
                 setTime(event.target.value);
                 if (kind === 'sleep') setSleepEnd(sleepEndTime(event.target.value, sleepMinutes));
               }
-            }} />
+            }} /></span>
           </label>
           <div className="event-date-row">
             <input ref={dateInputRef} className="date-picker-input" type="date" value={date} onChange={e => { markDirty(); setDate(e.target.value); }} required aria-label={tr(language, 'date')} />
@@ -414,8 +419,8 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
         {kind === 'sleep' && <>
           <label className="time-picker-row">
             {tr(language, 'sleepEnd')}
-            <input type="time" step="60" className={sleepEnd ? undefined : 'empty-time'} value={sleepEnd}
-              onChange={event => changeSleepTime(time, event.target.value)} />
+            <span className="time-input-wrap"><input type="time" step="60" className={sleepEnd ? undefined : 'empty-time'} value={sleepEnd}
+              onChange={event => changeSleepTime(time, event.target.value)} /></span>
           </label>
           <div className="sleep-duration-row" role="group" aria-labelledby="sleep-duration-label">
             <span id="sleep-duration-label">{tr(language, 'duration')}</span>
@@ -983,4 +988,4 @@ function App() {
   </div>;
 }
 
-createRoot(document.getElementById('root')).render(<App/>);
+createRoot(document.getElementById('root')).render(<><App /><ReleaseNotice /></>);
