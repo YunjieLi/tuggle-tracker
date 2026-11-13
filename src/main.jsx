@@ -8,17 +8,17 @@ import { observeDeviceSession } from './lib/deviceSession';
 import { FeedingImport } from './components/FeedingImport';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, ChartNoAxesCombined, ChartNoAxesColumn, Check, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
+import { Baby, Check, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
 import './styles.css';
 
 const navigation = [
-  ['#top', 'Feeding records', '喂养记录', Milk],
-  ['#feeding-report', 'Data report', '数据简报', ChartNoAxesColumn],
-  ['#growth-chart', 'Growth chart', '生长曲线', ChartNoAxesCombined],
-  ['#baby-profile', 'Baby profile', '宝宝档案', Baby],
+  ['#top', 'Feeding records', '喂养记录'],
+  ['#feeding-report', 'Data report', '数据简报'],
+  ['#growth-chart', 'Growth chart', '生长曲线'],
+  ['#baby-profile', 'Baby profile', '宝宝档案'],
 ];
 
 const STORAGE_KEY = 'little-days.activities.v1';
@@ -889,17 +889,6 @@ function App() {
         <input ref={profilePictureInputRef} className="profile-picture-input" type="file" accept="image/*" onChange={handleProfilePictureFile} />
       </div>
     </header>
-    <nav className="app-tab-bar" aria-label={language === 'zh' ? '应用导航' : 'App navigation'}>
-      {navigation.map(([hash, en, zh, Icon]) => <a key={hash} href={hash}
-        aria-current={(page || '#top') === hash ? 'page' : undefined}
-        onClick={event => {
-          if ((page || '#top') !== hash || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-          event.preventDefault();
-          window.scrollTo({ top: 0, behavior: 'instant' });
-        }}>
-        <Icon size={20} aria-hidden="true" /><span>{language === 'zh' ? zh : en}</span>
-      </a>)}
-    </nav>
     {page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
       page === '#feeding-report' ? <FeedingReport language={language} activities={userId ? (reportRecords ?? []) : activities} loading={Boolean(userId && !reportRecords && !reportError)} error={reportError} /> :
       page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()}>

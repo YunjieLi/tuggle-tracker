@@ -26,7 +26,7 @@ standaloneDisplay.addEventListener?.('change', updateDisplayMode);
 document.addEventListener('contextmenu', event => {
   if (event.pointerType !== 'touch' || !isStandalone()) return;
   if (event.target.closest('input, textarea, select, [contenteditable]')) return;
-  if (event.target.closest('button, .profile-identity, .app-tab-bar a')) {
+  if (event.target.closest('button, .profile-identity')) {
     event.preventDefault();
   }
 });

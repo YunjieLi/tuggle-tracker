@@ -30,6 +30,6 @@ Open the HTTPS site. The sign-in screen and **Baby profile** include an **Instal
 - **iPhone:** In Safari, tap **Share → Add to Home Screen**. If offered, enable **Open as Web App**, then tap **Add**.
 - **Android:** In Chrome, use **Install app** or **Add to Home screen** from the browser menu.
 
-The home screen icon opens Babji tracker in its own window with a bottom tab bar on phones. Account data requires a connection. After an initial online visit, reopening offline shows a retry screen.
+The home screen icon opens Babji tracker in its own window with the same top-right menu as the browser. Account data requires a connection. After an initial online visit, reopening offline shows a retry screen.
 
 To verify the service worker locally, run `npm run build` and `npm run preview`, then open the localhost preview. The development server does not register the service worker.
