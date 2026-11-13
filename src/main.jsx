@@ -1,3 +1,5 @@
+import { TimeInput } from './components/TimeInput';
+import { sleepEndFromDuration, sleepMinutesBetween } from './lib/sleepTime';
 import { formatAppDate, formatRecordTime, localDateValue } from './lib/dates';
 import { baby } from './lib/growth';
 import { BabyProfile, GrowthChart } from './components/BabyPages';
@@ -11,9 +13,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Baby, Check, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
 import { Button } from './components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
 import './styles.css';
+
+const appUpdatedAt = document.querySelector('meta[name="app-updated-at"]')?.content;
 
 const navigation = [
   ['#top', 'Feeding records', '喂养记录'],
@@ -37,8 +41,8 @@ const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const DEFAULT_QUICK_ACTIONS = ['feed', 'diaper'];
 const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '🍩', sleep: '🪻' };
 const translations = {
-  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', feedingMethods: 'Feeding methods', directNursing: 'Direct breastfeeding', bottledBreastmilk: 'Bottled breast milk', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Babji tracker home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', diaperAmount: 'Diaper amount', wet: 'Pee', poop: 'Poop', small: 'Small', medium: 'Medium', large: 'Large', duration: 'Duration', sleepStart: 'Start time', sleepEnd: 'End time', note: 'Note', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', showPassword: 'Show password', hidePassword: 'Hide password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
-  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', feedingMethods: '喂养方式', directNursing: '母乳亲喂', bottledBreastmilk: '母乳瓶喂', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Babji tracker 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', diaperAmount: '尿布量', wet: '尿尿', poop: '臭臭', small: '少', medium: '中', large: '多', duration: '时长', sleepStart: '开始时间', sleepEnd: '结束时间', note: '备注', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', showPassword: '显示密码', hidePassword: '隐藏密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
+  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', feedingMethods: 'Feeding methods', directNursing: 'Direct breastfeeding', bottledBreastmilk: 'Bottled breast milk', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Babji tracker home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', wet: 'Pee', poop: 'Poop', duration: 'Duration', sleepStart: 'Start time', sleepEnd: 'End time', note: 'Note', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', showPassword: 'Show password', hidePassword: 'Hide password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
+  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', feedingMethods: '喂养方式', directNursing: '母乳亲喂', bottledBreastmilk: '母乳瓶喂', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Babji tracker 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', wet: '尿尿', poop: '臭臭', duration: '时长', sleepStart: '开始时间', sleepEnd: '结束时间', note: '备注', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', showPassword: '显示密码', hidePassword: '隐藏密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
 };
 const tr = (language, key) => translations[language]?.[key] ?? translations.en[key] ?? key;
 const kinds = {
@@ -94,7 +98,7 @@ function ActivityIcon({ kind, size = 17, emoji = false, recent = false }) {
 
 function getTimeSlot(date = new Date()) {
   const rounded = new Date(date);
-  rounded.setMinutes(Math.floor(rounded.getMinutes() / 10) * 10, 0, 0);
+  rounded.setMinutes(Math.floor(rounded.getMinutes() / 5) * 5, 0, 0);
   return `${String(rounded.getHours()).padStart(2, '0')}:${String(rounded.getMinutes()).padStart(2, '0')}`;
 }
 
@@ -103,17 +107,6 @@ function activityDateAtTime(dateValue, value) {
   const [hours, minutes] = value.split(':').map(Number);
   const date = new Date(year, month - 1, day, hours, minutes, 0, 0);
   return date.toISOString();
-}
-
-function timeInMinutes(time) {
-  const [hours, minutes] = time.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
-function sleepEndTime(start, duration) {
-  if (!start || duration === '') return '';
-  const end = (timeInMinutes(start) + Number(duration)) % 1440;
-  return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
 }
 
 function sleepDurationMinutes(amount) {
@@ -152,15 +145,13 @@ function readDiaperState(detail = '') {
   const wetLevel = detail.match(/(?:^|\|)Wet:(None|Small|Medium|Large|True|False)(?:\||$)/i)?.[1]?.toLowerCase();
   const poopLevel = detail.match(/(?:^|\|)Poop:(None|Small|Medium|Large|True|False)(?:\||$)/i)?.[1]?.toLowerCase();
   if (wetLevel || poopLevel) {
-    const amount = detail.match(/(?:^|\|)Amount:(Small|Medium|Large)?(?:\||$)/i)?.[1]?.toLowerCase() || '';
     const wet = wetLevel === 'true' || (wetLevel && wetLevel !== 'none' && wetLevel !== 'false');
     const poop = poopLevel === 'true' || (poopLevel && poopLevel !== 'none' && poopLevel !== 'false');
-    return { wet: Boolean(wet), poop: Boolean(poop), amount: amount ? (amount === 'small' ? 'small' : 'large') : ([wetLevel, poopLevel].includes('large') || [wetLevel, poopLevel].includes('medium') ? 'large' : [wetLevel, poopLevel].includes('small') ? 'small' : '') };
+    return { wet: Boolean(wet), poop: Boolean(poop) };
   }
   return {
     wet: detail === 'Both' || detail.startsWith('Wet'),
     poop: detail === 'Both' || detail.startsWith('Poop'),
-    amount: detail === 'Both' || detail.startsWith('Wet') || detail.startsWith('Poop') ? 'small' : '',
   };
 }
 
@@ -229,10 +220,10 @@ function ProfilePictureCropDialog({ open, source, language, onOpenChange, onSave
         <img ref={imageRef} src={source} alt="" draggable="false" onLoad={event => setImageSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} style={{ width: imageWidth, height: imageHeight, left: `calc(50% + ${offset.x}px)`, top: `calc(50% + ${offset.y}px)` }} />
       </div>
       <label className="profile-crop-zoom">{tr(language, 'zoom')}<input type="range" min="1" max="3" step="0.01" value={zoom} onChange={event => zoomImage(event.target.value)} /></label>
-      <div className="profile-crop-actions">
+      <DialogFooter>
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tr(language, 'cancel')}</Button>
         <Button type="button" onClick={finishCrop} disabled={!imageSize.width}>{tr(language, 'usePhoto')}</Button>
-      </div>
+      </DialogFooter>
     </DialogContent>
   </Dialog>;
 }
@@ -248,7 +239,6 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
   const [breastfeeding, setBreastfeeding] = useState(false);
   const [diaperWet, setDiaperWet] = useState(false);
   const [diaperPoop, setDiaperPoop] = useState(false);
-  const [diaperAmount, setDiaperAmount] = useState('');
   const [time, setTime] = useState(() => getTimeSlot());
   const [date, setDate] = useState(() => localDateValue());
   const dateInputRef = useRef(null);
@@ -267,22 +257,22 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     if (!open) return;
     dirtyRef.current = false;
     versionRef.current += 1;
-    const start = activity && (kind === 'sleep' || kind === 'feed')
+    const start = activity
       ? new Date(activity.at).toTimeString().slice(0, 5)
-      : (activity ? getTimeSlot(new Date(activity.at)) : getTimeSlot());
+      : getTimeSlot();
     setTime(start);
     setDurationInput(null);
+    const startDate = activity ? localDateValue(new Date(activity.at)) : localDateValue();
     if (kind === 'sleep') {
-      setSleepEnd(activity ? sleepEndTime(start, sleepDurationMinutes(activity.amount)) : start);
+      setSleepEnd(activity ? (sleepEndFromDuration(startDate, start, sleepDurationMinutes(activity.amount))?.time ?? '') : start);
     } else {
       setSleepEnd('');
     }
-    setDate(activity ? localDateValue(new Date(activity.at)) : localDateValue());
+    setDate(startDate);
     if (kind === 'diaper') {
-      const diaperState = activity ? readDiaperState(activity.detail || '') : { wet: false, poop: true, amount: '' };
+      const diaperState = activity ? readDiaperState(activity.detail || '') : { wet: false, poop: true };
       setDiaperWet(diaperState.wet);
       setDiaperPoop(diaperState.poop);
-      setDiaperAmount(diaperState.amount);
     }
     setNote(activity?.note ?? (kind === 'sleep' && activity?.detail && activity.detail !== 'Sleep' ? activity.detail : ''));
     setAmount(activity?.amount == null ? '' : String(activity.amount));
@@ -296,6 +286,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     }
   }, [open, kind, activity?.id]);
   const sleepMinutes = kind === 'sleep' ? sleepDurationMinutes(amount) : '';
+  const endDate = sleepEndFromDuration(date, time, sleepMinutes)?.date;
   const durationParts = durationInput ?? {
     hours: sleepMinutes === '' ? '' : String(Math.floor(Number(sleepMinutes) / 60)),
     minutes: sleepMinutes === '' ? '' : String(Number(sleepMinutes) % 60),
@@ -306,7 +297,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     setDurationInput(null);
     setTime(start);
     setSleepEnd(end);
-    setAmount(start && end ? String((timeInMinutes(end) - timeInMinutes(start) + 1440) % 1440) : '');
+    setAmount(sleepMinutesBetween(date, start, end));
   }
 
   function changeSleepDuration(unit, value) {
@@ -318,7 +309,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     markDirty();
     setDurationInput(parts);
     setAmount(duration);
-    setSleepEnd(sleepEndTime(time, duration));
+    setSleepEnd(sleepEndFromDuration(date, time, duration)?.time ?? '');
   }
 
 
@@ -331,7 +322,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
       return { id: activity?.id, kind, at, detail: 'Feed', note: note.trim(), breastfeeding: feedingMethods.includes('breastfeeding') ? breastfeeding : Boolean(activity?.breastfeeding), ...parsed };
     }
     if (kind === 'pump') return { id: activity?.id, kind, at, detail: 'Pumping session', note: note.trim(), amount: amount === '' ? null : Number(amount) };
-    if (kind === 'diaper') return { id: activity?.id, kind, at, detail: `Wet:${diaperWet}|Poop:${diaperPoop}|Amount:${diaperAmount}`, note: note.trim() };
+    if (kind === 'diaper') return { id: activity?.id, kind, at, detail: `Wet:${diaperWet}|Poop:${diaperPoop}`, note: note.trim() };
     if (kind === 'sleep') return {
       id: activity?.id, kind, at, detail: 'Sleep', note: note.trim(),
       amount: /^\d+$/.test(amount) ? `${Number(amount)} min` : amount.trim(),
@@ -349,7 +340,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
       if (dirtyRef.current && scheduledVersion === versionRef.current) saveDraftRef.current();
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [open, activity?.id, kind, time, date, note, amount, amounts, breastfeeding, diaperWet, diaperPoop, diaperAmount]);
+  }, [open, activity?.id, kind, time, date, note, amount, amounts, breastfeeding, diaperWet, diaperPoop]);
   return <Dialog open={open} onOpenChange={nextOpen => {
     if (savingRef.current) return;
     if (!nextOpen) saveDraftRef.current();
@@ -376,20 +367,28 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
         }
       }}>
         <div className="time-field-group">
-          <label className="time-picker-row">
-            {tr(language, kind === 'sleep' ? 'sleepStart' : 'time')}
-            <span className="time-input-wrap"><input type="time" step={kind === 'sleep' || kind === 'feed' ? 60 : 600} className={time ? undefined : 'empty-time'} value={time} required onChange={event => {
+          <div className="time-picker-row">
+            <span>{tr(language, kind === 'sleep' ? 'sleepStart' : 'time')}</span>
+            <span className="time-input-wrap"><TimeInput value={time} required language={language}
+              label={tr(language, kind === 'sleep' ? 'sleepStart' : 'time')} onChange={nextTime => {
               if (kind === 'sleep' && sleepEnd) {
-                changeSleepTime(event.target.value, sleepEnd);
+                changeSleepTime(nextTime, sleepEnd);
               } else {
                 markDirty();
-                setTime(event.target.value);
-                if (kind === 'sleep') setSleepEnd(sleepEndTime(event.target.value, sleepMinutes));
+                setTime(nextTime);
+                if (kind === 'sleep') setSleepEnd(sleepEndFromDuration(date, nextTime, sleepMinutes)?.time ?? '');
               }
             }} /></span>
-          </label>
+          </div>
           <div className="event-date-row">
-            <input ref={dateInputRef} className="date-picker-input" type="date" value={date} onChange={e => { markDirty(); setDate(e.target.value); }} required aria-label={tr(language, 'date')} />
+            <input ref={dateInputRef} className="date-picker-input" type="date" value={date} onChange={event => {
+              markDirty();
+              const nextDate = event.target.value;
+              setDate(nextDate);
+              if (kind === 'sleep' && sleepMinutes !== '') {
+                setSleepEnd(sleepEndFromDuration(nextDate, time, sleepMinutes)?.time ?? '');
+              }
+            }} required aria-label={tr(language, 'date')} />
             <button type="button" className="date-edit-button" aria-label={`${tr(language, 'edit')} ${tr(language, 'date').toLowerCase()}, ${formatAppDate(date, language)}`} onClick={() => { const input = dateInputRef.current; if (input?.showPicker) input.showPicker(); else input?.click(); }}>
               <span>{formatAppDate(date, language)}</span><Pencil size={13}/>
             </button>
@@ -409,19 +408,14 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
             <EventToggle label="💦" ariaLabel={tr(language, 'wet')} checked={diaperWet} onChange={() => { markDirty(); setDiaperWet(value => !value); }} />
             <EventToggle label="💩" ariaLabel={tr(language, 'poop')} checked={diaperPoop} onChange={() => { markDirty(); setDiaperPoop(value => !value); }} />
           </div>
-          <div className="diaper-amount-row">
-            <span className="diaper-amount-label">{tr(language, 'diaperAmount')}</span>
-            <div className="diaper-amount-segmented" role="group" aria-label={tr(language, 'diaperAmount')}>
-              {['small', 'large'].map(level => <button key={level} type="button" aria-pressed={diaperAmount === level} className={diaperAmount === level ? 'selected' : ''} onClick={() => { markDirty(); setDiaperAmount(value => value === level ? '' : level); }}>{tr(language, level)}</button>)}
-            </div>
-          </div>
         </div>}
         {kind === 'sleep' && <>
-          <label className="time-picker-row">
-            {tr(language, 'sleepEnd')}
-            <span className="time-input-wrap"><input type="time" step="60" className={sleepEnd ? undefined : 'empty-time'} value={sleepEnd}
-              onChange={event => changeSleepTime(time, event.target.value)} /></span>
-          </label>
+          <div className="time-picker-row">
+            <span>{tr(language, 'sleepEnd')}</span>
+            <span className="time-input-wrap"><TimeInput value={sleepEnd} language={language} label={tr(language, 'sleepEnd')} onChange={end => changeSleepTime(time, end)} />
+              {endDate && endDate !== date && <span className="sleep-end-date">{formatAppDate(endDate, language)}</span>}
+            </span>
+          </div>
           <div className="sleep-duration-row" role="group" aria-labelledby="sleep-duration-label">
             <span id="sleep-duration-label">{tr(language, 'duration')}</span>
             <div className="sleep-duration-fields">
@@ -438,11 +432,18 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
           </div>
         </>}
         <label>{tr(language, 'note')}<input value={note} onChange={e => { markDirty(); setNote(e.target.value); }} /></label>
-        {!activity && <div className="dialog-actions">
-          <Button type="submit" disabled={saving}>{tr(language, 'save')}</Button>
-          <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr(language, 'cancel')}</Button>
-        </div>}
-        {activity && <button type="button" className="delete-record" onClick={() => onDelete(activity.id)}>{tr(language, 'delete')}</button>}
+        <DialogFooter>
+          {activity ? <>
+            <Button variant="ghost" className="delete-record" onClick={() => onDelete(activity.id)}>{tr(language, 'delete')}</Button>
+            <Button onClick={() => {
+              saveDraftRef.current();
+              onOpenChange(false);
+            }}>{language === 'zh' ? '完成' : 'Done'}</Button>
+          </> : <>
+            <Button variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>{tr(language, 'cancel')}</Button>
+            <Button type="submit" disabled={saving}>{tr(language, 'save')}</Button>
+          </>}
+        </DialogFooter>
       </form>
     </DialogContent>}
   </Dialog>;
@@ -456,17 +457,19 @@ function activitySummary(activity, language, feedingMethods) {
       feedingMethods.includes('breastfeeding') && activity.breastfeeding && tr(language, 'directNursing'),
     ].filter(Boolean).join(' · ') || tr(language, 'feed');
   }
-  const note = activity.note?.trim() || (activity.kind === 'sleep' && activity.detail && activity.detail !== 'Sleep' ? activity.detail.trim() : '');
+  const note = activity.note?.trim();
   if (activity.kind === 'pump') return [activity.amount != null && `${activity.amount} ${tr(language, 'ml')}`, note].filter(Boolean).join(' · ');
   if (activity.kind === 'diaper') {
-    const rawAmount = activity.detail?.match(/(?:^|\|)Amount:(Small|Medium|Large)(?:\||$)/i)?.[1]?.toLowerCase();
-    const diaperAmount = rawAmount ? tr(language, rawAmount === 'small' ? 'small' : 'large') : '';
-    return [diaperAmount, note].filter(Boolean).join(' · ');
+    const { wet, poop } = readDiaperState(activity.detail);
+    const types = [poop && tr(language, 'poop'), wet && tr(language, 'wet')].filter(Boolean);
+    return types.join('+') || tr(language, 'diaper');
   }
-  const duration = typeof activity.amount === 'string'
-    ? activity.amount.replace(/(\d+(?:\.\d+)?)\s*(小时|hours?|hrs?)/gi, '$1h').replace(/(\d+(?:\.\d+)?)\s*(分钟|minutes?|mins?)/gi, '$1min')
-    : activity.amount;
-  return [note, duration].filter(Boolean).join(' · ');
+  const minutes = Number(sleepDurationMinutes(activity.amount));
+  const label = tr(language, 'sleep');
+  if (!Number.isSafeInteger(minutes) || minutes <= 0) return label;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return `${label} ${hours ? `${hours}h` : ''}${remainder ? `${remainder}min` : ''}`;
 }
 
 function AuthPanel({ language }) {
@@ -515,6 +518,7 @@ function AuthPanel({ language }) {
 }
 
 function App() {
+  const [importedRecordId, setImportedRecordId] = useState(null);
   const [page, setPage] = useState(() => window.location.hash);
   useEffect(() => {
     const updatePage = () => setPage(window.location.hash);
@@ -710,7 +714,7 @@ function App() {
     setReportRecords(null);
     setReportError(false);
     const start = new Date();
-    start.setDate(start.getDate() - 29);
+    start.setDate(start.getDate() - (start.getHours() < 14 ? 30 : 29));
     start.setHours(0, 0, 0, 0);
     async function loadReport() {
       try {
@@ -743,6 +747,13 @@ function App() {
   const lastFeed = useMemo(() => activities.filter(item => item.kind === 'feed').sort((a, b) => new Date(b.at) - new Date(a.at))[0], [activities]);
   const sortedActivities = useMemo(() => [...activities].sort((a, b) => new Date(b.at) - new Date(a.at)), [activities]);
   const visibleActivities = cursor ? sortedActivities : sortedActivities.slice(0, localVisibleCount);
+  useEffect(() => {
+    if (!importedRecordId || page !== '#top') return;
+    const record = document.getElementById(`activity-${importedRecordId}`);
+    (record ?? document.getElementById('quick-heading'))?.focus({ preventScroll: true });
+    record?.scrollIntoView({ block: 'center' });
+    setImportedRecordId(null);
+  }, [importedRecordId, page]);
   const hasMore = Boolean(cursor) || visibleActivities.length < sortedActivities.length;
   const initialLoading = Boolean(userId && loadedActivitiesUserId !== userId);
 
@@ -888,8 +899,19 @@ function App() {
         <button type="button" className="account-trigger" aria-label={tr(language, 'accountMenu')} aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen(open => !open)}>
           <Menu size={23} strokeWidth={1.9} aria-hidden="true" />
         </button>
-        {accountMenuOpen && <div className="account-dropdown" role="menu" aria-label={tr(language, 'accountMenu')}>
-          {navigation.map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
+        {accountMenuOpen && <div className="account-dropdown">
+          <div role="menu" aria-label={tr(language, 'accountMenu')}>
+            {navigation.map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
+          </div>
+          <p className="account-updated-at">
+            {appUpdatedAt ? <>
+              {language === 'zh' ? '最近更新' : 'Last updated'}{' '}
+              <time dateTime={appUpdatedAt}>{new Intl.DateTimeFormat(language === 'zh' ? 'zh-CN' : 'en-US', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+              }).format(new Date(appUpdatedAt))}</time>
+            </> : (language === 'zh' ? '本地开发版本' : 'Local development build')}
+          </p>
         </div>}
         <input ref={profilePictureInputRef} className="profile-picture-input" type="file" accept="image/*" onChange={handleProfilePictureFile} />
       </div>
@@ -897,8 +919,13 @@ function App() {
     {page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
       page === '#feeding-report' ? <FeedingReport language={language} activities={userId ? (reportRecords ?? []) : activities} loading={Boolean(userId && !reportRecords && !reportError)} error={reportError} /> :
       page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()}>
-        <section className="profile-settings-section" aria-labelledby="profile-settings-title">
-          <h2 id="profile-settings-title">{tr(language, 'settings')}</h2>
+        <section className="profile-settings-section" aria-label={tr(language, 'settings')}>
+          <FeedingImport language={language} onImport={importFeedingRecords}
+            disabled={Boolean(user && loadedActivitiesUserId !== user.id)}
+            onImported={id => {
+              setImportedRecordId(id);
+              window.location.hash = '#top';
+            }} />
           <div className="baby-panel profile-settings">
             <label className="profile-language">
               {tr(language, 'language')}
@@ -927,21 +954,17 @@ function App() {
       </BabyProfile> :
     <main id="top" className="page-wrap">
       <section className="quick-section" aria-labelledby="quick-heading">
-        <div className="section-heading"><h2 id="quick-heading" className="page-title">{tr(language, 'feedingRecords')}</h2></div>
+        <div className="section-heading">
+          <h2 id="quick-heading" tabIndex={-1} className="page-title">{tr(language, 'feedingRecords')}</h2>
+        </div>
         <div className="quick-grid">
-          {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind => {
-            const action = <Button key={kind} className={`quick-action event-${kind}`} onClick={() => createActivity(kind)}>
+          {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind => (
+            <Button key={kind} className={`quick-action event-${kind}`} onClick={() => createActivity(kind)}>
               <Plus size={17} aria-hidden="true" />
               <span aria-hidden="true">{quickActionEmoji[kind]}</span>
               <span>{tr(language, kind)}</span>
-            </Button>;
-            if (kind !== 'feed') return action;
-            return <div key={kind} className="feed-quick-actions event-feed" role="group" aria-label={tr(language, 'feed')}>
-              {action}
-              <FeedingImport language={language} onImport={importFeedingRecords}
-                disabled={Boolean(user && loadedActivitiesUserId !== user.id)} />
-            </div>;
-          })}
+            </Button>
+          ))}
         </div>
       </section>
 
@@ -949,7 +972,9 @@ function App() {
         <div className="activity-list">
             {visibleActivities.map((activity, index) => {
               const summary = activitySummary(activity, language, feedingMethods);
-              const note = activity.kind === 'feed' ? activity.note?.trim() : '';
+              const note = activity.kind === 'pump' ? '' : (
+                activity.note?.trim() || (activity.kind === 'sleep' && activity.detail !== 'Sleep' ? activity.detail?.trim() : '')
+              );
               const timeLabel = formatRecordTime(activity.at, language);
               const day = localDateValue(new Date(activity.at));
               const previousDay = index ? localDateValue(new Date(visibleActivities[index - 1].at)) : null;

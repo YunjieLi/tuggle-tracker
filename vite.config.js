@@ -33,6 +33,9 @@ export default defineConfig({
         index.source = index.source.replace(
           '<meta name="app-release" content="" />',
           `<meta name="app-release" content="${version}" />`,
+        ).replace(
+          '<meta name="app-updated-at" content="" />',
+          `<meta name="app-updated-at" content="${new Date().toISOString()}" />`,
         );
         this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ version }) });
       },

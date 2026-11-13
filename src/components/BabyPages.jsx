@@ -2,7 +2,7 @@ import { formatAppDate } from '../lib/dates';
 import React, { useEffect, useId, useState } from 'react';
 import { Baby, Camera, ChartLine, ChevronLeft, Plus } from 'lucide-react';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { ageInDays, baby, percentile, referenceMaxDay, referenceMeasurement } from '../lib/growth';
 import { supabase } from '../lib/supabase';
 
@@ -252,10 +252,10 @@ export function GrowthChart({ language, userId }) {
             <MeasurementDateInput zh={zh} initialDate={editing?.measured_on || ''} />
             {fields.map(field => <MeasurementInput key={field[0]} field={field} zh={zh} value={editing?.[field[0]]} />)}
             {error && <p role="alert">{errors[error]}</p>}
-            <div className="growth-actions">
-              <Button type="submit" disabled={saving}>{zh ? '保存' : 'Save'}</Button>
+            <DialogFooter>
               <Button type="button" variant="outline" disabled={saving} onClick={() => { setEditing(null); setError(null); }}>{zh ? '取消' : 'Cancel'}</Button>
-            </div>
+              <Button type="submit" disabled={saving}>{zh ? '保存' : 'Save'}</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

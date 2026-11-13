@@ -2,9 +2,9 @@ import React, { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { parseFeedingCsv } from '../lib/feedingCsv';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 
-export function FeedingImport({ language, disabled, onImport }) {
+export function FeedingImport({ language, disabled, onImport, onImported }) {
   const zh = language === 'zh';
   const title = zh ? '批量导入喂奶记录' : 'Import feeding records';
   const [open, setOpen] = useState(false);
@@ -58,8 +58,9 @@ export function FeedingImport({ language, disabled, onImport }) {
 
   return <Dialog open={open} onOpenChange={changeOpen}>
     <DialogTrigger asChild>
-      <Button type="button" className="quick-action feed-import-trigger" aria-label={title} title={title} disabled={disabled}>
-        <Upload size={17} aria-hidden="true" />
+      <Button type="button" variant="outline" className="feed-import-trigger" disabled={disabled}>
+        <Upload size={18} aria-hidden="true" />
+        {title}
       </Button>
     </DialogTrigger>
     <DialogContent className="activity-sheet-content feed-import-dialog" aria-describedby={undefined}
@@ -67,11 +68,8 @@ export function FeedingImport({ language, disabled, onImport }) {
         const id = importedRecordId.current;
         importedRecordId.current = null;
         if (!id) return;
-        const record = document.getElementById(`activity-${id}`);
-        if (!record) return;
         event.preventDefault();
-        record.focus({ preventScroll: true });
-        record.scrollIntoView({ block: 'center' });
+        onImported(id);
       }}>
       <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
       <form className="activity-form feed-import-form" onSubmit={submit}>
@@ -83,10 +81,10 @@ export function FeedingImport({ language, disabled, onImport }) {
           <textarea rows={7} value={csv} disabled={saving} spellCheck={false} onChange={event => setCsv(event.target.value)} />
         </label>
         {error && <p className="form-error" role="alert">{error}</p>}
-        <div className="dialog-actions">
-          <Button type="submit" disabled={saving || !csv.trim()}>{saving ? (zh ? '正在导入…' : 'Importing…') : (zh ? '导入' : 'Import')}</Button>
+        <DialogFooter>
           <Button type="button" variant="outline" disabled={saving} onClick={() => changeOpen(false)}>{zh ? '取消' : 'Cancel'}</Button>
-        </div>
+          <Button type="submit" disabled={saving || !csv.trim()}>{saving ? (zh ? '正在导入…' : 'Importing…') : (zh ? '导入' : 'Import')}</Button>
+        </DialogFooter>
       </form>
     </DialogContent>
   </Dialog>;
