@@ -26,7 +26,7 @@ function recentMilkTotals(activities, today, range) {
   return Array.from(days.values(), day => ({ ...day, total: day.breastmilk + day.formula }));
 }
 
-export function FeedingReport({ language, activities, loading }) {
+export function FeedingReport({ language, activities, loading, error }) {
   const [range, setRange] = useState(7);
   const chartRef = useRef(null);
   const zh = language === 'zh';
@@ -60,7 +60,7 @@ export function FeedingReport({ language, activities, loading }) {
             className={range === days ? 'selected' : ''} onClick={() => setRange(days)}>{days}d</button>)}
         </div>
       </div>
-      {loading ? <p role="status">{zh ? '正在加载…' : 'Loading…'}</p> : maxTotal === 0 ?
+      {error ? <p role="alert">{zh ? '无法加载奶量记录。' : 'Could not load milk intake records.'}</p> : loading ? <p role="status">{zh ? '正在加载…' : 'Loading…'}</p> : maxTotal === 0 ?
         <p>{zh ? `最近 ${range} 天暂无奶量记录。` : `No milk amounts recorded in the last ${range} days.`}</p> :
         <>
           <div className="feeding-legend" aria-hidden="true">

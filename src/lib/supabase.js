@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { rememberDeviceUse } from './deviceSession';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -25,6 +26,7 @@ async function usernameAuth(action, fields) {
     throw new Error(message || 'Something went wrong. Try again.');
   }
   if (data?.access_token && data?.refresh_token) {
+    rememberDeviceUse();
     const { error: sessionError } = await supabase.auth.setSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,

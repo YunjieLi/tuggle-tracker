@@ -2,14 +2,24 @@ import { formatAppDate, formatRecordTime, localDateValue } from './lib/dates';
 import { baby } from './lib/growth';
 import { BabyProfile, GrowthChart } from './components/BabyPages';
 import { FeedingReport } from './components/FeedingReport';
+import { ACTIVITY_PAGE_SIZE, fetchActivityPage } from './lib/activityQueries';
+import { InstallApp } from './components/InstallApp';
+import { observeDeviceSession } from './lib/deviceSession';
 import { FeedingImport } from './components/FeedingImport';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, Check, Droplets, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
+import { Baby, ChartNoAxesCombined, ChartNoAxesColumn, Check, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
 import './styles.css';
+
+const navigation = [
+  ['#top', 'Feeding records', '喂养记录', Milk],
+  ['#feeding-report', 'Data report', '数据简报', ChartNoAxesColumn],
+  ['#growth-chart', 'Growth chart', '生长曲线', ChartNoAxesCombined],
+  ['#baby-profile', 'Baby profile', '宝宝档案', Baby],
+];
 
 const STORAGE_KEY = 'little-days.activities.v1';
 const QUICK_ACTIONS_KEY = 'little-days.quick-actions.v1';
@@ -26,8 +36,8 @@ const PROFILE_PICTURES_BUCKET = 'profile-pictures';
 const DEFAULT_QUICK_ACTIONS = ['feed', 'diaper'];
 const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '🍩', sleep: '🪻' };
 const translations = {
-  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', feedingMethods: 'Feeding methods', directNursing: 'Direct breastfeeding', bottledBreastmilk: 'Bottled breast milk', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Little Days home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', diaperAmount: 'Diaper amount', wet: 'Pee', poop: 'Poop', small: 'Small', medium: 'Medium', large: 'Large', duration: 'Duration', sleepStart: 'Start time', sleepEnd: 'End time', note: 'Note', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
-  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', feedingMethods: '喂养方式', directNursing: '母乳亲喂', bottledBreastmilk: '母乳瓶喂', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Little Days 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', diaperAmount: '尿布量', wet: '尿尿', poop: '臭臭', small: '少', medium: '中', large: '多', duration: '时长', sleepStart: '开始时间', sleepEnd: '结束时间', note: '备注', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
+  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', feedingMethods: 'Feeding methods', directNursing: 'Direct breastfeeding', bottledBreastmilk: 'Bottled breast milk', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Babji tracker home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', diaperAmount: 'Diaper amount', wet: 'Pee', poop: 'Poop', small: 'Small', medium: 'Medium', large: 'Large', duration: 'Duration', sleepStart: 'Start time', sleepEnd: 'End time', note: 'Note', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', showPassword: 'Show password', hidePassword: 'Hide password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
+  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', feedingMethods: '喂养方式', directNursing: '母乳亲喂', bottledBreastmilk: '母乳瓶喂', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Babji tracker 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', diaperAmount: '尿布量', wet: '尿尿', poop: '臭臭', small: '少', medium: '中', large: '多', duration: '时长', sleepStart: '开始时间', sleepEnd: '结束时间', note: '备注', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', showPassword: '显示密码', hidePassword: '隐藏密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
 };
 const tr = (language, key) => translations[language]?.[key] ?? translations.en[key] ?? key;
 const kinds = {
@@ -433,16 +443,15 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
   </Dialog>;
 }
 
-function activitySubtitle(activity, language, feedingMethods) {
-  const note = activity.note?.trim() || (activity.kind === 'sleep' && activity.detail && activity.detail !== 'Sleep' ? activity.detail.trim() : '');
+function activitySummary(activity, language, feedingMethods) {
   if (activity.kind === 'feed') {
     return [
       Number(activity.formulaAmount) > 0 && `${tr(language, 'formula')} ${activity.formulaAmount} ${tr(language, 'ml')}`,
       Number(activity.breastmilkAmount) > 0 && `${tr(language, 'breastmilk')} ${activity.breastmilkAmount} ${tr(language, 'ml')}`,
       feedingMethods.includes('breastfeeding') && activity.breastfeeding && tr(language, 'directNursing'),
-      note,
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join(' · ') || tr(language, 'feed');
   }
+  const note = activity.note?.trim() || (activity.kind === 'sleep' && activity.detail && activity.detail !== 'Sleep' ? activity.detail.trim() : '');
   if (activity.kind === 'pump') return [activity.amount != null && `${activity.amount} ${tr(language, 'ml')}`, note].filter(Boolean).join(' · ');
   if (activity.kind === 'diaper') {
     const rawAmount = activity.detail?.match(/(?:^|\|)Amount:(Small|Medium|Large)(?:\||$)/i)?.[1]?.toLowerCase();
@@ -458,6 +467,7 @@ function activitySubtitle(activity, language, feedingMethods) {
 function AuthPanel({ language }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -476,13 +486,26 @@ function AuthPanel({ language }) {
 
   return <div className="auth-page"><section className="auth-panel">
     <span className="brand-mark"><Baby size={22} /></span>
-    <h1>little days</h1>
+    <h1>Babji tracker</h1>
     <form className="auth-form" onSubmit={submit}>
       <label>{tr(language, 'name')}<input value={username} onChange={event => setUsername(event.target.value.toLowerCase())} autoComplete="username" minLength={3} maxLength={32} pattern="[a-z0-9][a-z0-9._-]{2,31}" title="Use 3–32 lowercase letters, numbers, dots, underscores, or hyphens." required /></label>
-      <label>{tr(language, 'password')}<input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" minLength={6} required /></label>
+      <div className="auth-password">
+        <label htmlFor="login-password">{tr(language, 'password')}</label>
+        <div className="auth-password-field">
+          <input id="login-password" type={passwordVisible ? 'text' : 'password'} value={password}
+            onChange={event => setPassword(event.target.value)} autoComplete="current-password"
+            autoCapitalize="none" spellCheck={false} minLength={6} required />
+          <button type="button" className="auth-password-toggle" aria-controls="login-password"
+            aria-label={tr(language, passwordVisible ? 'hidePassword' : 'showPassword')}
+            onClick={() => setPasswordVisible(visible => !visible)}>
+            {passwordVisible ? <EyeOff size={21} aria-hidden="true" /> : <Eye size={21} aria-hidden="true" />}
+          </button>
+        </div>
+      </div>
       <Button type="submit" disabled={busy}>{busy ? tr(language, 'wait') : tr(language, 'signIn')}</Button>
     </form>
     {error && <p className="auth-error" role="alert">{error}</p>}
+    <InstallApp language={language} />
   </section></div>;
 }
 
@@ -494,6 +517,16 @@ function App() {
     return () => window.removeEventListener('hashchange', updatePage);
   }, []);
   const [activities, setActivities] = useState(getSavedActivities);
+  const [cursor, setCursor] = useState(null);
+  const [localVisibleCount, setLocalVisibleCount] = useState(ACTIVITY_PAGE_SIZE);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageError, setPageError] = useState(false);
+  const [olderLastFeed, setOlderLastFeed] = useState(null);
+  const [reportRecords, setReportRecords] = useState(null);
+  const [reportError, setReportError] = useState(false);
+  const pagination = useRef(null);
+  const loadMoreRef = useRef(null);
+  const removedIds = useRef(new Set());
   const [loadedActivitiesUserId, setLoadedActivitiesUserId] = useState(null);
   const [quickActions, setQuickActions] = useState(getQuickActions);
   const [language, setLanguage] = useState(() => localStorage.getItem(LANGUAGE_KEY) === 'en' ? 'en' : 'zh');
@@ -615,52 +648,82 @@ function App() {
   }, [accountMenuOpen]);
   useEffect(() => {
     if (!supabase) return undefined;
-    let active = true;
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!active) return;
-      if (error) setToast(error.message);
-      setUser(data?.session?.user ?? null);
-      setAuthLoading(false);
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    return observeDeviceSession(supabase.auth, session => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
     });
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
   }, []);
   useEffect(() => {
     if (!supabase || !userId) return undefined;
-    let active = true;
+    const controller = new AbortController();
+    const { signal } = controller;
     setActivities([]);
+    setCursor(null);
+    setLoadingMore(false);
+    setPageError(false);
+    setOlderLastFeed(null);
     setLoadedActivitiesUserId(null);
-    const loadActivities = async () => {
-      const { data, error } = await supabase
-        .from('baby_activities')
-        .select('*')
-        .eq('user_id', userId)
-        .order('occurred_at', { ascending: false });
-      if (!active) return;
-      setLoadedActivitiesUserId(userId);
-      if (error) {
-        setActivities(getStoredActivities(`${STORAGE_KEY}.${userId}`));
+    setLocalVisibleCount(ACTIVITY_PAGE_SIZE);
+    removedIds.current.clear();
+    pagination.current = controller;
+    async function load() {
+      try {
+        const records = await fetchActivityPage(userId, { signal });
+        if (signal.aborted) return;
+        setActivities(current => {
+          const currentIds = new Set(current.map(record => record.id));
+          return [...current, ...records.filter(record => !currentIds.has(record.id) && !removedIds.current.has(record.id))];
+        });
+        setCursor(records.length === ACTIVITY_PAGE_SIZE ? records.at(-1) : null);
+        setLoadedActivitiesUserId(userId);
+        if (!records.some(record => record.kind === 'feed') && records.length === ACTIVITY_PAGE_SIZE) {
+          const [feed] = await fetchActivityPage(userId, { kind: 'feed', limit: 1, signal });
+          if (!signal.aborted) setOlderLastFeed(feed ?? null);
+        }
+      } catch (error) {
+        if (signal.aborted) return;
+        setActivities(current => current.length ? current : getStoredActivities(`${STORAGE_KEY}.${userId}`));
+        setLoadedActivitiesUserId(userId);
         setToast(`${tr(language, 'loadActivitiesFailed')}: ${error.message}`);
-        return;
       }
-      if (data.length) {
-        const loaded = data.map(activityFromRow);
-        setActivities(loaded);
-        localStorage.setItem(`${STORAGE_KEY}.${userId}`, JSON.stringify(loaded));
-        return;
-      }
-      setActivities([]);
-      localStorage.setItem(`${STORAGE_KEY}.${userId}`, '[]');
-    };
-    loadActivities();
-    return () => { active = false; };
+    }
+    load();
+    return () => controller.abort();
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId || loadedActivitiesUserId !== userId) return;
+    try {
+      localStorage.setItem(`${STORAGE_KEY}.${userId}`, JSON.stringify(activities));
+    } catch { /* The activity cache is optional. */ }
+  }, [activities, loadedActivitiesUserId, userId]);
+
+  useEffect(() => {
+    if (!userId || page !== '#feeding-report') return undefined;
+    const controller = new AbortController();
+    const { signal } = controller;
+    setReportRecords(null);
+    setReportError(false);
+    const start = new Date();
+    start.setDate(start.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    async function loadReport() {
+      try {
+        const records = [];
+        let nextCursor;
+        do {
+          const batch = await fetchActivityPage(userId, { cursor: nextCursor, since: start.toISOString(), kind: 'feed', limit: 100, signal });
+          records.push(...batch);
+          nextCursor = batch.length === 100 ? batch.at(-1) : null;
+        } while (nextCursor && !signal.aborted);
+        if (!signal.aborted) setReportRecords(records);
+      } catch {
+        if (!signal.aborted) setReportError(true);
+      }
+    }
+    loadReport();
+    return () => controller.abort();
+  }, [page, userId]);
   useEffect(() => {
     if (!supabase || !user) {
       setAccountUsername('');
@@ -673,7 +736,47 @@ function App() {
     return () => { active = false; };
   }, [user]);
   const lastFeed = useMemo(() => activities.filter(item => item.kind === 'feed').sort((a, b) => new Date(b.at) - new Date(a.at))[0], [activities]);
-  const visibleActivities = useMemo(() => [...activities].sort((a, b) => new Date(b.at) - new Date(a.at)), [activities]);
+  const sortedActivities = useMemo(() => [...activities].sort((a, b) => new Date(b.at) - new Date(a.at)), [activities]);
+  const visibleActivities = cursor ? sortedActivities : sortedActivities.slice(0, localVisibleCount);
+  const hasMore = Boolean(cursor) || visibleActivities.length < sortedActivities.length;
+  const initialLoading = Boolean(userId && loadedActivitiesUserId !== userId);
+
+  async function loadMore() {
+    if (!cursor) {
+      setLocalVisibleCount(count => count + ACTIVITY_PAGE_SIZE);
+      return;
+    }
+    const request = pagination.current;
+    if (!request || request.signal.aborted || request.loadingMore) return;
+    request.loadingMore = true;
+    setPageError(false);
+    setLoadingMore(true);
+    try {
+      const batch = await fetchActivityPage(userId, { cursor, signal: request.signal });
+      if (request.signal.aborted) return;
+      setActivities(current => {
+        const ids = new Set(current.map(record => record.id));
+        return [...current, ...batch.filter(record => !ids.has(record.id) && !removedIds.current.has(record.id))];
+      });
+      setLocalVisibleCount(Infinity);
+      setCursor(batch.length === ACTIVITY_PAGE_SIZE ? batch.at(-1) : null);
+    } catch {
+      if (!request.signal.aborted) setPageError(true);
+    } finally {
+      request.loadingMore = false;
+      if (!request.signal.aborted) setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || loadingMore || pageError || initialLoading || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) loadMore();
+    }, { rootMargin: '0px 0px 240px 0px' });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [page, cursor, localVisibleCount, hasMore, loadingMore, pageError, initialLoading, userId]);
   const logActivity = async (activity, { close = true, silent = false } = {}) => {
     const saved = { ...activity, id: activity.id || crypto.randomUUID() };
     const next = activity.id
@@ -708,6 +811,18 @@ function App() {
     ]);
     const existing = new Map(activities.filter(record => record.kind === 'feed' && !record.breastfeeding)
       .map(record => [recordKey(record), record]));
+    if (supabase && userId) {
+      const timestamps = [...new Set(records.map(record => record.at))];
+      for (let offset = 0; offset < timestamps.length; offset += 50) {
+        const { data, error } = await supabase.from('baby_activities').select('*')
+          .eq('user_id', userId).eq('kind', 'feed').in('occurred_at', timestamps.slice(offset, offset + 50));
+        if (error) throw error;
+        for (const row of data) {
+          const record = activityFromRow(row);
+          if (!record.breastfeeding) existing.set(recordKey(record), record);
+        }
+      }
+    }
     const added = [];
     const matched = records.map(record => {
       const key = recordKey(record);
@@ -716,26 +831,32 @@ function App() {
       added.push(record);
       return record;
     });
-    const next = [...added, ...activities];
+    const mergeImported = current => {
+      const currentIds = new Set(current.map(record => record.id));
+      return [...new Map(matched.filter(record => !currentIds.has(record.id)).map(record => [record.id, record])).values(), ...current];
+    };
     if (added.length && supabase && user) {
       const { error } = await supabase.from('baby_activities')
         .upsert(added.map(record => activityToRow(record, user.id)), { ignoreDuplicates: true });
       if (error) throw error;
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch { /* The database write already succeeded. */ }
     } else if (added.length) {
-      localStorage.setItem(storageKey, JSON.stringify(next));
+      localStorage.setItem(storageKey, JSON.stringify(mergeImported(activities)));
     }
-    if (added.length) setActivities(next);
+    setActivities(mergeImported);
+    const newest = matched.reduce((latest, record) => new Date(record.at) > new Date(latest.at) ? record : latest);
+    if (!cursor) {
+      setLocalVisibleCount(count => Math.max(count, sortedActivities.filter(record => new Date(record.at) >= new Date(newest.at)).length + 1));
+    }
     const skipped = records.length - added.length;
     const result = language === 'zh' ? `已导入 ${added.length} 笔喂奶记录` : `Imported ${added.length} feeding records`;
     const duplicates = language === 'zh' ? `，跳过 ${skipped} 笔重复记录` : `, skipped ${skipped} duplicates`;
     setToast(skipped ? result + duplicates : result);
     window.setTimeout(() => setToast(''), 2200);
-    return matched.reduce((latest, record) => new Date(record.at) > new Date(latest.at) ? record : latest).id;
+    return newest.id;
   };
   const removeActivity = async (id) => {
+    removedIds.current.add(id);
+    if (olderLastFeed?.id === id) setOlderLastFeed(null);
     const next = activities.filter(item => item.id !== id);
     setActivities(next);
     localStorage.setItem(user ? `${STORAGE_KEY}.${user.id}` : STORAGE_KEY, JSON.stringify(next));
@@ -763,13 +884,24 @@ function App() {
           <Menu size={23} strokeWidth={1.9} aria-hidden="true" />
         </button>
         {accountMenuOpen && <div className="account-dropdown" role="menu" aria-label={tr(language, 'accountMenu')}>
-          {[['#top', 'Feeding records', '喂养记录'], ['#feeding-report', 'Data report', '数据简报'], ['#growth-chart', 'Growth chart', '生长曲线'], ['#baby-profile', 'Baby profile', '宝宝档案']].map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
+          {navigation.map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
         </div>}
         <input ref={profilePictureInputRef} className="profile-picture-input" type="file" accept="image/*" onChange={handleProfilePictureFile} />
       </div>
     </header>
+    <nav className="app-tab-bar" aria-label={language === 'zh' ? '应用导航' : 'App navigation'}>
+      {navigation.map(([hash, en, zh, Icon]) => <a key={hash} href={hash}
+        aria-current={(page || '#top') === hash ? 'page' : undefined}
+        onClick={event => {
+          if ((page || '#top') !== hash || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          event.preventDefault();
+          window.scrollTo({ top: 0, behavior: 'instant' });
+        }}>
+        <Icon size={20} aria-hidden="true" /><span>{language === 'zh' ? zh : en}</span>
+      </a>)}
+    </nav>
     {page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
-      page === '#feeding-report' ? <FeedingReport language={language} activities={activities} loading={Boolean(user && loadedActivitiesUserId !== user.id)} /> :
+      page === '#feeding-report' ? <FeedingReport language={language} activities={userId ? (reportRecords ?? []) : activities} loading={Boolean(userId && !reportRecords && !reportError)} error={reportError} /> :
       page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()}>
         <section className="profile-settings-section" aria-labelledby="profile-settings-title">
           <h2 id="profile-settings-title">{tr(language, 'settings')}</h2>
@@ -794,7 +926,8 @@ function App() {
             </fieldset>
           </div>
         </section>
-        {user && <button type="button" className="profile-sign-out" onClick={() => supabase.auth.signOut()}>
+        <InstallApp language={language} />
+        {user && <button type="button" className="profile-sign-out" onClick={() => supabase.auth.signOut({ scope: 'local' })}>
           {tr(language, 'signOut')}
         </button>}
       </BabyProfile> :
@@ -821,7 +954,8 @@ function App() {
       <section className="quick-section recent-section" aria-label={tr(language, 'recentActivity')}>
         <div className="activity-list">
             {visibleActivities.map((activity, index) => {
-              const subtitle = activitySubtitle(activity, language, feedingMethods);
+              const summary = activitySummary(activity, language, feedingMethods);
+              const note = activity.kind === 'feed' ? activity.note?.trim() : '';
               const timeLabel = formatRecordTime(activity.at, language);
               const day = localDateValue(new Date(activity.at));
               const previousDay = index ? localDateValue(new Date(visibleActivities[index - 1].at)) : null;
@@ -829,22 +963,32 @@ function App() {
               return <React.Fragment key={activity.id}>
                 {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day, language, undefined, { showWeekday: true })}</span></div>}
                 <article id={`activity-${activity.id}`} className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0}
-                  aria-label={[tr(language, activity.kind), subtitle, timeLabel].filter(Boolean).join(' · ')}
+                  aria-label={[tr(language, activity.kind), summary, note, timeLabel].filter(Boolean).join(' · ')}
                   onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
                   <ActivityIcon kind={activity.kind} emoji recent />
                   {nextDay === day && <span className="timeline-line"/>}
                   <div className="activity-copy activity-summary">
-                    <span className="activity-detail">{subtitle}</span>
+                    <div className="activity-description">
+                      <span className="activity-detail">{summary}</span>
+                      {note && <span className="activity-note">{note}</span>}
+                    </div>
                     <span className="activity-time">{timeLabel}</span>
                   </div>
                 </article>
               </React.Fragment>;
             })}
-            {visibleActivities.length === 0 && <div className="empty-feed"><span className="empty-icon"><Sparkles size={19}/></span><strong>{tr(language, 'noActivity')}</strong><Button variant="outline" size="sm" onClick={() => createActivity('feed')}>{tr(language, 'log')}</Button></div>}
+            {initialLoading && <p role="status">{tr(language, 'loading')}</p>}
+            {!initialLoading && visibleActivities.length === 0 && <div className="empty-feed"><span className="empty-icon"><Sparkles size={19}/></span><strong>{tr(language, 'noActivity')}</strong><Button variant="outline" size="sm" onClick={() => createActivity('feed')}>{tr(language, 'log')}</Button></div>}
+          {hasMore && !initialLoading && <div ref={loadMoreRef} className="activity-pagination">
+            {pageError && <p role="alert">{tr(language, 'loadActivitiesFailed')}</p>}
+            <Button type="button" variant="outline" size="sm" disabled={loadingMore} onClick={loadMore}>
+              {loadingMore ? tr(language, 'loading') : (language === 'zh' ? '加载更早记录' : 'Load older records')}
+            </Button>
+          </div>}
         </div>
       </section>
     </main>}
-    <ActivityDialog kind={activeKind || editingActivity?.kind} activity={editingActivity} open={Boolean(activeKind || editingActivity)} lastFeed={lastFeed} feedingMethods={feedingMethods} language={language} onOpenChange={(open) => { if (!open) { setActiveKind(null); setEditingActivity(null); } }} onSave={logActivity} onDelete={removeActivity}/>
+    <ActivityDialog kind={activeKind || editingActivity?.kind} activity={editingActivity} open={Boolean(activeKind || editingActivity)} lastFeed={lastFeed ?? olderLastFeed} feedingMethods={feedingMethods} language={language} onOpenChange={(open) => { if (!open) { setActiveKind(null); setEditingActivity(null); } }} onSave={logActivity} onDelete={removeActivity}/>
     <ProfilePictureCropDialog open={Boolean(cropSource)} source={cropSource} language={language} onOpenChange={open => { if (!open) closePhotoCrop(); }} onSave={saveProfilePicture}/>
     {toast && <div className="toast" role="status"><Check size={16}/>{toast}</div>}
   </div>;
