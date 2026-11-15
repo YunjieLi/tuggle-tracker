@@ -107,7 +107,7 @@ button { cursor: pointer; }
 .activity-copy { flex: 1; min-width: 0; padding-top: 0; }
 .activity-title { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 8px; }
 .activity-title strong { display: inline-flex; align-items: center; gap: 8px; color: #3b3942; font-size: 18px; font-weight: 600; }
-.activity-time { flex: none; color: #77747d; font-size: 18px; }
+.activity-time { flex: none; color: #77747d; font-family: ui-monospace, monospace; font-size: 18px; }
 .activity-detail { margin-top: 6px; color: #706d76; font-size: 18px; }
 .activity-summary { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: 8px; }
 .activity-summary .activity-detail { margin-top: 0; min-width: 0; overflow-wrap: anywhere; color: var(--foreground); }
@@ -310,6 +310,18 @@ button { cursor: pointer; }
 .baby-page > button { justify-self: start; }
 .baby-panel { padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
 .baby-panel > p { color: #625e6b; font-size: .85rem; }
+.feedback-page { display: grid; gap: 16px; margin-top: 32px; }
+.feedback-items { margin: 0; padding: 0; list-style: none; }
+.feedback-row { display: flex; align-items: center; gap: 10px; min-height: 44px; padding-inline: 4px; }
+.feedback-row input[type="checkbox"] { flex: none; width: 18px; height: 18px; accent-color: #796bb2; }
+.feedback-row-text, .feedback-edit { flex: 1; min-width: 0; min-height: 44px; padding: 8px 0; border: 0; background: transparent; }
+.feedback-row-text:focus { outline: none; box-shadow: inset 0 -2px var(--primary); }
+.feedback-edit { color: inherit; text-align: left; overflow-wrap: anywhere; }
+.feedback-delete { flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #a63c45; font-size: 24px; }
+.feedback-delete:hover, .feedback-delete:focus-visible { background: #fbeced; }
+.feedback-completed summary { display: list-item; color: #625e6b; cursor: pointer; }
+.feedback-completed .feedback-items { margin-top: 8px; }
+.feedback-completed .feedback-edit { color: #625e6b; text-decoration: line-through; }
 .baby-details { display: flex; align-items: center; gap: 24px; }
 .baby-portrait { display: grid; place-items: center; flex-shrink: 0; width: 84px; height: 84px; border-radius: 50%; background: #eeeaf9; color: #67569e; object-fit: cover; }
 .baby-details dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; }

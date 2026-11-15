@@ -9,6 +9,7 @@ import { ReleaseNotice } from './components/ReleaseNotice';
 import { InstallApp } from './components/InstallApp';
 import { observeDeviceSession } from './lib/deviceSession';
 import { FeedingImport } from './components/FeedingImport';
+import { FeedbackChecklist } from './components/FeedbackChecklist';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Baby, Check, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
@@ -531,8 +532,8 @@ function App() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageError, setPageError] = useState(false);
   const [olderLastFeed, setOlderLastFeed] = useState(null);
-  const [reportRecords, setReportRecords] = useState(null);
-  const [reportError, setReportError] = useState(false);
+  const [report, setReport] = useState(null);
+  const [reportRevision, setReportRevision] = useState(0);
   const pagination = useRef(null);
   const loadMoreRef = useRef(null);
   const removedIds = useRef(new Set());
@@ -542,6 +543,7 @@ function App() {
   const [feedingMethods, setFeedingMethods] = useState(getFeedingMethods);
   const [user, setUser] = useState(null);
   const userId = user?.id;
+  const currentReport = report?.userId === userId ? report : null;
   const [accountUsername, setAccountUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [cropSource, setCropSource] = useState('');
@@ -711,28 +713,44 @@ function App() {
     if (!userId || page !== '#feeding-report') return undefined;
     const controller = new AbortController();
     const { signal } = controller;
-    setReportRecords(null);
-    setReportError(false);
-    const start = new Date();
-    start.setDate(start.getDate() - (start.getHours() < 14 ? 30 : 29));
-    start.setHours(0, 0, 0, 0);
+    let loading = false;
     async function loadReport() {
+      if (loading || document.hidden) return;
+      loading = true;
+      const start = new Date();
+      start.setDate(start.getDate() - (start.getHours() < 14 ? 30 : 29));
+      start.setHours(0, 0, 0, 0);
+      const since = start.toISOString();
       try {
         const records = [];
         let nextCursor;
         do {
-          const batch = await fetchActivityPage(userId, { cursor: nextCursor, since: start.toISOString(), kind: 'feed', limit: 100, signal });
+          const batch = await fetchActivityPage(userId, { cursor: nextCursor, since, kind: 'feed', limit: 100, signal });
           records.push(...batch);
           nextCursor = batch.length === 100 ? batch.at(-1) : null;
         } while (nextCursor && !signal.aborted);
-        if (!signal.aborted) setReportRecords(records);
+        if (!signal.aborted) setReport({ userId, records, error: false });
       } catch {
-        if (!signal.aborted) setReportError(true);
+        if (!signal.aborted) {
+          setReport(previous => previous?.userId === userId && previous.records
+            ? previous
+            : { userId, records: null, error: true });
+        }
+      } finally {
+        loading = false;
       }
     }
     loadReport();
-    return () => controller.abort();
-  }, [page, userId]);
+    const refreshTimer = window.setInterval(loadReport, 15_000);
+    document.addEventListener('visibilitychange', loadReport);
+    window.addEventListener('focus', loadReport);
+    return () => {
+      controller.abort();
+      window.clearInterval(refreshTimer);
+      document.removeEventListener('visibilitychange', loadReport);
+      window.removeEventListener('focus', loadReport);
+    };
+  }, [page, userId, reportRevision]);
   useEffect(() => {
     if (!supabase || !user) {
       setAccountUsername('');
@@ -806,6 +824,7 @@ function App() {
         setToast(`${tr(language, 'saveFailed')}: ${error.message}`);
         return;
       }
+      if (saved.kind === 'feed') setReportRevision(revision => revision + 1);
     }
     if (close) {
       setActiveKind(null);
@@ -855,6 +874,7 @@ function App() {
       const { error } = await supabase.from('baby_activities')
         .upsert(added.map(record => activityToRow(record, user.id)), { ignoreDuplicates: true });
       if (error) throw error;
+      setReportRevision(revision => revision + 1);
     } else if (added.length) {
       localStorage.setItem(storageKey, JSON.stringify(mergeImported(activities)));
     }
@@ -882,6 +902,9 @@ function App() {
         setToast(`${tr(language, 'deleteFailed')}: ${error.message}`);
         return;
       }
+      if (activities.some(item => item.id === id && item.kind === 'feed')) {
+        setReportRevision(revision => revision + 1);
+      }
     }
     setEditingActivity(null);
   };
@@ -902,6 +925,7 @@ function App() {
         {accountMenuOpen && <div className="account-dropdown">
           <div role="menu" aria-label={tr(language, 'accountMenu')}>
             {navigation.map(([hash, en, zh]) => <button key={hash} type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = hash; }}>{language === 'zh' ? zh : en}</button>)}
+            <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); window.location.hash = '#feedback'; }}>{language === 'zh' ? '报反馈' : 'Feedback'}</button>
           </div>
           <p className="account-updated-at">
             {appUpdatedAt ? <>
@@ -916,8 +940,11 @@ function App() {
         <input ref={profilePictureInputRef} className="profile-picture-input" type="file" accept="image/*" onChange={handleProfilePictureFile} />
       </div>
     </header>
-    {page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
-      page === '#feeding-report' ? <FeedingReport language={language} activities={userId ? (reportRecords ?? []) : activities} loading={Boolean(userId && !reportRecords && !reportError)} error={reportError} /> :
+    {page === '#feedback' ? <FeedbackChecklist key={userId || 'local'} language={language} userId={userId} /> :
+      page === '#growth-chart' ? <GrowthChart key={user?.id || 'local'} language={language} userId={user?.id} /> :
+      page === '#feeding-report' ? <FeedingReport language={language}
+        activities={userId ? (currentReport?.records ?? []) : activities}
+        loading={Boolean(userId && !currentReport)} error={currentReport?.error} /> :
       page === '#baby-profile' ? <BabyProfile language={language} avatar={profilePicture} onUpload={() => profilePictureInputRef.current?.click()}>
         <section className="profile-settings-section" aria-label={tr(language, 'settings')}>
           <FeedingImport language={language} onImport={importFeedingRecords}

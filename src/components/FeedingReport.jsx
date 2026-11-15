@@ -57,6 +57,7 @@ export function FeedingReport({ language, activities, loading, error }) {
   }, [hasChart, error]);
 
   return <BabyPage title={labels.title} language={language}>
+    <FeedingTimes language={language} activities={activities} loading={loading} error={error} />
     <section className="baby-panel feeding-report" aria-labelledby="feeding-report-heading">
       <div className="feeding-report-header">
         <h2 id="feeding-report-heading">{labels.heading}</h2>
@@ -96,7 +97,6 @@ export function FeedingReport({ language, activities, loading, error }) {
           </table>
         </>}
     </section>
-    <FeedingTimes language={language} activities={activities} loading={loading} error={error} />
   </BabyPage>;
 }
 
