@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { useFeedbackItems } from '../lib/useFeedbackItems';
 
 const labels = {
-  zh: { title: '报反馈', newItem: '添加', delete: '删除', completed: '已完成', saveFailed: '无法保存，请重试。' },
-  en: { title: 'Feedback', newItem: 'Add', delete: 'Delete', completed: 'Completed', saveFailed: 'Could not save. Try again.' },
+  zh: { title: '报反馈', newItem: '添加', delete: '删除', completed: '已完成', saveFailed: '反馈同步失败，将自动重试。' },
+  en: { title: 'Feedback', newItem: 'Add', delete: 'Delete', completed: 'Completed', saveFailed: 'Could not sync feedback. Changes will retry automatically.' },
 };
 
 function FeedbackRow({ item, deleteLabel, onSave, onDelete }) {
@@ -40,41 +41,23 @@ function FeedbackRow({ item, deleteLabel, onSave, onDelete }) {
 
 export function FeedbackChecklist({ language, userId }) {
   const copy = labels[language];
-  const storageKey = `little-days.feedback.v1.${userId || 'local'}`;
-  const [items, setItems] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey));
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
-  });
+  const { items, saveItem, saveFailed } = useFeedbackItems(userId);
   const [draft, setDraft] = useState(null);
-  const [saveFailed, setSaveFailed] = useState(false);
   const visibleItems = items.filter(item => item.id !== draft?.id);
   const openItems = visibleItems.filter(item => !item.checked);
   const completedItems = visibleItems.filter(item => item.checked);
 
-  function saveItems(next) {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
-    } catch {
-      setSaveFailed(true);
-      return false;
-    }
-    setItems(next);
-    setSaveFailed(false);
-    return true;
-  }
-
-  function saveDraft({ id, title: rawTitle }, checked = false) {
+  function saveDraft({ id, title: rawTitle, createdAt }, checked = false) {
     const title = rawTitle.trim();
-    const remaining = items.filter(item => item.id !== id);
-    return saveItems(title ? [{ id, title, checked }, ...remaining] : remaining);
+    if (!title && !items.some(item => item.id === id)) return true;
+    return saveItem(id, title ? { id, title, checked, createdAt } : null);
   }
 
   function updateDraft(rawTitle) {
-    const next = { id: draft?.id ?? crypto.randomUUID(), title: rawTitle };
+    const next = {
+      ...(draft ?? { id: crypto.randomUUID(), createdAt: new Date().toISOString() }),
+      title: rawTitle,
+    };
     setDraft(next);
     saveDraft(next);
   }
@@ -86,8 +69,8 @@ export function FeedbackChecklist({ language, userId }) {
 
   function renderItems(list) {
     return list.map(item => <FeedbackRow key={item.id} item={item} deleteLabel={copy.delete}
-      onSave={updated => saveItems(items.map(entry => entry.id === item.id ? updated : entry))}
-      onDelete={() => saveItems(items.filter(entry => entry.id !== item.id))} />);
+      onSave={updated => saveItem(item.id, updated)}
+      onDelete={() => saveItem(item.id, null)} />);
   }
 
   return <main className="page-wrap feedback-page">
