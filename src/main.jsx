@@ -12,7 +12,7 @@ import { FeedingImport } from './components/FeedingImport';
 import { FeedbackChecklist } from './components/FeedbackChecklist';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, Check, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves } from 'lucide-react';
+import { Baby, Check, ChevronLeft, ChevronRight, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves, X } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
@@ -118,13 +118,13 @@ function sleepDurationMinutes(amount) {
   return String(Math.round(Number(match[1] || 0) * 60 + Number(match[2] || 0)));
 }
 
-function AmountStepper({ label, value, onChange, language, editable = false }) {
+function AmountStepper({ label, value, onChange, language }) {
   const numericValue = value === '' ? null : Number(value);
   return <div className="amount-field">
     <span className="amount-label">{label}</span>
     <div className="amount-stepper">
       <button type="button" aria-label={`${tr(language, 'decrease')} ${label.toLowerCase()}`} disabled={numericValue === null || numericValue <= 0} onClick={() => onChange(String(Math.max(0, (numericValue || 0) - 5)))}>−</button>
-      <input type={editable ? 'text' : 'number'} inputMode="numeric" readOnly={!editable}
+      <input type="number" inputMode="numeric" readOnly
         aria-label={`${label} ${tr(language, 'amountInMl')}`} value={value}
         onChange={event => {
           const next = event.target.value;
@@ -132,6 +132,50 @@ function AmountStepper({ label, value, onChange, language, editable = false }) {
         }} />
       <span className="amount-unit">{tr(language, 'ml')}</span>
       <button type="button" aria-label={`${tr(language, 'increase')} ${label.toLowerCase()}`} onClick={() => onChange(String((numericValue || 0) + 5))}>+</button>
+    </div>
+  </div>;
+}
+
+const milkAmountFields = ['formulaAmount', 'breastmilkAmount'];
+
+function positiveMilkAmount(value) {
+  const amount = Number(value);
+  return Number.isSafeInteger(amount) && amount > 0;
+}
+
+function FeedAmountStepper({ label, value, previousAmount, onChange, language }) {
+  const interacted = useRef(false);
+  const seed = () => {
+    const previous = !interacted.current && value === '' ? previousAmount : '';
+    interacted.current = true;
+    if (previous === '') return false;
+    onChange(previous);
+    return true;
+  };
+  const step = delta => {
+    if (seed()) return;
+    onChange(String(Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Number(value) + delta))));
+  };
+
+  return <div className="amount-field">
+    <span className="amount-label">{label}</span>
+    <div className="amount-stepper feed-amount-stepper">
+      <button type="button" aria-label={`${tr(language, 'decrease')} ${label}`} onClick={() => step(-5)}>
+        <ChevronLeft size={20} aria-hidden="true" />
+      </button>
+      <input type="text" inputMode="numeric" aria-label={`${label} ${tr(language, 'amountInMl')}`}
+        value={value} onFocus={seed}
+        onChange={event => {
+          const next = event.target.value;
+          if (/^\d*$/.test(next) && Number.isSafeInteger(Number(next))) onChange(next);
+        }} />
+      <button type="button" aria-label={`${tr(language, 'increase')} ${label}`} onClick={() => step(5)}>
+        <ChevronRight size={20} aria-hidden="true" />
+      </button>
+      {value !== '' && <button type="button" aria-label={`${language === 'zh' ? '清空' : 'Clear'} ${label}`}
+        onClick={() => { interacted.current = true; onChange(''); }}>
+        <X size={17} aria-hidden="true" />
+      </button>}
     </div>
   </div>;
 }
@@ -229,7 +273,7 @@ function ProfilePictureCropDialog({ open, source, language, onOpenChange, onSave
   </Dialog>;
 }
 
-function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, lastFeed, language, feedingMethods }) {
+function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, lastFeed, previousMilkAmounts, language, feedingMethods }) {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [note, setNote] = useState('');
@@ -278,14 +322,16 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     setNote(activity?.note ?? (kind === 'sleep' && activity?.detail && activity.detail !== 'Sleep' ? activity.detail : ''));
     setAmount(activity?.amount == null ? '' : String(activity.amount));
     if (kind === 'feed') {
-      const source = activity ?? lastFeed;
-      setAmounts({
-        formulaAmount: String(source?.formulaAmount ?? ''),
-        breastmilkAmount: String(source?.breastmilkAmount ?? ''),
-      });
+      if (activity) setAmounts(Object.fromEntries(milkAmountFields.map(key => [key, String(activity[key] ?? '')])));
       setBreastfeeding(Boolean(activity?.breastfeeding));
     }
   }, [open, kind, activity?.id]);
+  useEffect(() => {
+    if (!open || kind !== 'feed' || activity || dirtyRef.current) return;
+    setAmounts(Object.fromEntries(milkAmountFields.map(key => [
+      key, positiveMilkAmount(lastFeed?.[key]) ? String(lastFeed[key]) : '',
+    ])));
+  }, [open, kind, activity, lastFeed]);
   const sleepMinutes = kind === 'sleep' ? sleepDurationMinutes(amount) : '';
   const endDate = sleepEndFromDuration(date, time, sleepMinutes)?.date;
   const durationParts = durationInput ?? {
@@ -398,8 +444,9 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
         {kind === 'feed' && feedingMethods.length > 0 && <div className="feed-amounts">
           {feedingMethods.includes('breastfeeding') && <EventToggle label={tr(language, 'directNursing')}
             checked={breastfeeding} onChange={() => { markDirty(); setBreastfeeding(value => !value); }} />}
-          {['formulaAmount', 'breastmilkAmount'].filter(key => feedingMethods.includes(key)).map(key =>
-            <AmountStepper key={key} label={tr(language, feedingMethodLabels[key])} value={amounts[key]} language={language} editable={Boolean(activity)}
+          {milkAmountFields.filter(key => feedingMethods.includes(key)).map(key =>
+            <FeedAmountStepper key={`${activity?.id ?? 'new'}-${key}`} label={tr(language, feedingMethodLabels[key])}
+              value={amounts[key]} previousAmount={activity ? '' : previousMilkAmounts[key]} language={language}
               onChange={value => { markDirty(); setAmounts(current => ({ ...current, [key]: value })); }} />
           )}
         </div>}
@@ -453,8 +500,8 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
 function activitySummary(activity, language, feedingMethods) {
   if (activity.kind === 'feed') {
     return [
-      Number(activity.formulaAmount) > 0 && `${tr(language, 'formula')} ${activity.formulaAmount} ${tr(language, 'ml')}`,
-      Number(activity.breastmilkAmount) > 0 && `${tr(language, 'breastmilk')} ${activity.breastmilkAmount} ${tr(language, 'ml')}`,
+      Number(activity.formulaAmount) > 0 && `${activity.formulaAmount}${tr(language, 'ml')} ${tr(language, 'formula')}`,
+      Number(activity.breastmilkAmount) > 0 && `${activity.breastmilkAmount}${tr(language, 'ml')} ${tr(language, 'breastmilk')}`,
       feedingMethods.includes('breastfeeding') && activity.breastfeeding && tr(language, 'directNursing'),
     ].filter(Boolean).join(' · ') || tr(language, 'feed');
   }
@@ -531,7 +578,7 @@ function App() {
   const [localVisibleCount, setLocalVisibleCount] = useState(ACTIVITY_PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageError, setPageError] = useState(false);
-  const [olderLastFeed, setOlderLastFeed] = useState(null);
+  const [olderFeeds, setOlderFeeds] = useState([]);
   const [report, setReport] = useState(null);
   const [reportRevision, setReportRevision] = useState(0);
   const pagination = useRef(null);
@@ -672,7 +719,7 @@ function App() {
     setCursor(null);
     setLoadingMore(false);
     setPageError(false);
-    setOlderLastFeed(null);
+    setOlderFeeds([]);
     setLoadedActivitiesUserId(null);
     setLocalVisibleCount(ACTIVITY_PAGE_SIZE);
     removedIds.current.clear();
@@ -687,9 +734,18 @@ function App() {
         });
         setCursor(records.length === ACTIVITY_PAGE_SIZE ? records.at(-1) : null);
         setLoadedActivitiesUserId(userId);
-        if (!records.some(record => record.kind === 'feed') && records.length === ACTIVITY_PAGE_SIZE) {
-          const [feed] = await fetchActivityPage(userId, { kind: 'feed', limit: 1, signal });
-          if (!signal.aborted) setOlderLastFeed(feed ?? null);
+        const feeds = records.filter(record => record.kind === 'feed');
+        let missing = milkAmountFields.filter(key => !feeds.some(feed => positiveMilkAmount(feed[key])));
+        const older = [];
+        let batch = records;
+        let hasOlder = records.length === ACTIVITY_PAGE_SIZE;
+        const historyPageSize = 100;
+        while (missing.length > 0 && hasOlder && !signal.aborted) {
+          batch = await fetchActivityPage(userId, { kind: 'feed', cursor: batch.at(-1), limit: historyPageSize, signal });
+          older.push(...batch);
+          missing = missing.filter(key => !batch.some(feed => positiveMilkAmount(feed[key])));
+          hasOlder = batch.length === historyPageSize;
+          if (!signal.aborted) setOlderFeeds([...older]);
         }
       } catch (error) {
         if (signal.aborted) return;
@@ -762,7 +818,18 @@ function App() {
       .catch(error => { if (active) setToast(`${tr(language, 'loadNameFailed')}: ${error.message}`); });
     return () => { active = false; };
   }, [user]);
-  const lastFeed = useMemo(() => activities.filter(item => item.kind === 'feed').sort((a, b) => new Date(b.at) - new Date(a.at))[0], [activities]);
+  const feedHistory = useMemo(() => {
+    const byId = new Map(olderFeeds.map(feed => [feed.id, feed]));
+    for (const item of activities) {
+      if (item.kind === 'feed') byId.set(item.id, item);
+    }
+    return [...byId.values()].filter(feed => !removedIds.current.has(feed.id))
+      .sort((a, b) => new Date(b.at) - new Date(a.at));
+  }, [activities, olderFeeds]);
+  const lastFeed = feedHistory[0];
+  const previousMilkAmounts = Object.fromEntries(milkAmountFields.map(key => [
+    key, String(feedHistory.find(feed => positiveMilkAmount(feed[key]))?.[key] ?? ''),
+  ]));
   const sortedActivities = useMemo(() => [...activities].sort((a, b) => new Date(b.at) - new Date(a.at)), [activities]);
   const visibleActivities = cursor ? sortedActivities : sortedActivities.slice(0, localVisibleCount);
   useEffect(() => {
@@ -892,7 +959,6 @@ function App() {
   };
   const removeActivity = async (id) => {
     removedIds.current.add(id);
-    if (olderLastFeed?.id === id) setOlderLastFeed(null);
     const next = activities.filter(item => item.id !== id);
     setActivities(next);
     localStorage.setItem(user ? `${STORAGE_KEY}.${user.id}` : STORAGE_KEY, JSON.stringify(next));
@@ -1034,7 +1100,7 @@ function App() {
         </div>
       </section>
     </main>}
-    <ActivityDialog kind={activeKind || editingActivity?.kind} activity={editingActivity} open={Boolean(activeKind || editingActivity)} lastFeed={lastFeed ?? olderLastFeed} feedingMethods={feedingMethods} language={language} onOpenChange={(open) => { if (!open) { setActiveKind(null); setEditingActivity(null); } }} onSave={logActivity} onDelete={removeActivity}/>
+    <ActivityDialog kind={activeKind || editingActivity?.kind} activity={editingActivity} open={Boolean(activeKind || editingActivity)} lastFeed={lastFeed} previousMilkAmounts={previousMilkAmounts} feedingMethods={feedingMethods} language={language} onOpenChange={(open) => { if (!open) { setActiveKind(null); setEditingActivity(null); } }} onSave={logActivity} onDelete={removeActivity}/>
     <ProfilePictureCropDialog open={Boolean(cropSource)} source={cropSource} language={language} onOpenChange={open => { if (!open) closePhotoCrop(); }} onSave={saveProfilePicture}/>
     {toast && <div className="toast" role="status"><Check size={16}/>{toast}</div>}
   </div>;

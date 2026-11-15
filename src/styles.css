@@ -204,6 +204,9 @@ button { cursor: pointer; }
 .amount-stepper button:disabled { color: #d2cfd4; cursor: default; }
 .amount-stepper input { flex: 1 1 auto; width: 20px; min-width: 0; height: 40px; padding: 0; border: 0; border-radius: 0; text-align: right; outline: 0; box-shadow: none; color: #504d55; font-size: 18px; font-weight: 600; }
 .amount-stepper input:focus { border: 0; box-shadow: none; }
+.feed-amount-stepper button { flex-basis: 40px; }
+.feed-amount-stepper input { flex: 1 1 0; width: 0; height: 44px; text-align: center; }
+.feed-amount-stepper:focus-within { border-color: #a595cf; }
 .amount-unit { padding: 0 5px 0 4px; color: #716e77; font-size: 18px; }
 .form-error { color: #a9474b; font-size: 18px; }
 .event-toggle { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; width: 100%; height: 46px; padding: 0; border: 0; color: #5e5b63; background: transparent; font-size: 18px; font-weight: 600; text-align: left; }
