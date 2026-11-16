@@ -14,7 +14,7 @@ import { FeedingImport } from './components/FeedingImport';
 import { FeedbackChecklist } from './components/FeedbackChecklist';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Baby, Check, ChevronLeft, ChevronRight, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves, X } from 'lucide-react';
+import { Baby, Check, ChevronLeft, ChevronRight, CircleX, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves, X } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
@@ -99,9 +99,10 @@ function getFeedingMethods() {
   return DEFAULT_FEEDING_METHODS;
 }
 
-function ActivityIcon({ kind, size = 17, emoji = false, recent = false }) {
+function ActivityIcon({ kind, size = 17, emoji = false, recent = false, diaperState }) {
   const Icon = kinds[kind].icon;
-  return <span className={`activity-icon event-${kind} ${recent ? 'activity-icon-recent' : ''}`}>{emoji ? <span aria-hidden="true">{quickActionEmoji[kind]}</span> : <Icon size={size} strokeWidth={1.8} />}</span>;
+  const symbol = kind === 'diaper' && diaperState?.wet && !diaperState.poop ? '💦' : quickActionEmoji[kind];
+  return <span className={`activity-icon event-${kind} ${recent ? 'activity-icon-recent' : ''}`}>{emoji ? <span aria-hidden="true">{symbol}</span> : <Icon size={size} strokeWidth={1.8} />}</span>;
 }
 
 function getTimeSlot(date = new Date()) {
@@ -151,38 +152,34 @@ function positiveMilkAmount(value) {
 }
 
 function FeedAmountStepper({ label, value, previousAmount, onChange, language }) {
-  const interacted = useRef(false);
-  const seed = () => {
-    const previous = !interacted.current && value === '' ? previousAmount : '';
-    interacted.current = true;
-    if (previous === '') return false;
-    onChange(previous);
-    return true;
-  };
   const step = delta => {
-    if (seed()) return;
+    if (value === '' && previousAmount) {
+      onChange(previousAmount);
+      return;
+    }
     onChange(String(Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Number(value) + delta))));
   };
 
   return <div className="amount-field">
     <span className="amount-label">{label}</span>
-    <div className="amount-stepper feed-amount-stepper">
-      <button type="button" aria-label={`${tr(language, 'decrease')} ${label}`} onClick={() => step(-5)}>
+    <div className="field-stepper">
+      <button type="button" className="field-stepper-button" aria-label={`${tr(language, 'decrease')} ${label}`} onClick={() => step(-5)}>
         <ChevronLeft size={20} aria-hidden="true" />
       </button>
-      <input type="text" inputMode="numeric" aria-label={`${label} ${tr(language, 'amountInMl')}`}
-        value={value} onFocus={seed}
-        onChange={event => {
-          const next = event.target.value;
-          if (/^\d*$/.test(next) && Number.isSafeInteger(Number(next))) onChange(next);
-        }} />
-      <button type="button" aria-label={`${tr(language, 'increase')} ${label}`} onClick={() => step(5)}>
+      <div className="feed-amount-input">
+        <input type="text" inputMode="numeric" aria-label={`${label} ${tr(language, 'amountInMl')}`}
+          value={value} onChange={event => {
+            const next = event.target.value;
+            if (/^\d*$/.test(next) && Number.isSafeInteger(Number(next))) onChange(next);
+          }} />
+        {value !== '' && <button type="button" className="feed-amount-clear"
+          aria-label={`${language === 'zh' ? '清空' : 'Clear'} ${label}`} onClick={() => onChange('')}>
+          <CircleX size={16} aria-hidden="true" />
+        </button>}
+      </div>
+      <button type="button" className="field-stepper-button" aria-label={`${tr(language, 'increase')} ${label}`} onClick={() => step(5)}>
         <ChevronRight size={20} aria-hidden="true" />
       </button>
-      {value !== '' && <button type="button" aria-label={`${language === 'zh' ? '清空' : 'Clear'} ${label}`}
-        onClick={() => { interacted.current = true; onChange(''); }}>
-        <X size={17} aria-hidden="true" />
-      </button>}
     </div>
   </div>;
 }
@@ -351,12 +348,12 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
     minutes: sleepMinutes === '' ? '' : String(Number(sleepMinutes) % 60),
   };
 
-  function changeSleepTime(start, end) {
+  function changeSleepTime(start, end, startDate = date) {
     markDirty();
     setDurationInput(null);
     setTime(start);
     setSleepEnd(end);
-    setAmount(sleepMinutesBetween(date, start, end));
+    setAmount(sleepMinutesBetween(startDate, start, end));
   }
 
   function changeSleepDuration(unit, value) {
@@ -416,7 +413,7 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
       dialogTitleRef.current?.focus({ preventScroll: true });
     }}>
       <DialogHeader>
-        <ActivityIcon kind={kind} emoji recent />
+        <ActivityIcon kind={kind} emoji recent diaperState={{ wet: diaperWet, poop: diaperPoop }} />
         <DialogTitle ref={dialogTitleRef} tabIndex={-1}>
           {activity ? `${tr(language, 'edit')} ${tr(language, kind).toLowerCase()}` : tr(language, kind)}
         </DialogTitle>
@@ -457,13 +454,20 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
           <div className="time-picker-row">
             <span>{tr(language, kind === 'sleep' ? 'sleepStart' : 'time')}</span>
             <span className="time-input-wrap"><TimeInput value={time} required language={language}
-              label={tr(language, kind === 'sleep' ? 'sleepStart' : 'time')} onChange={nextTime => {
+              label={tr(language, kind === 'sleep' ? 'sleepStart' : 'time')} onChange={(nextTime, dayOffset) => {
+              let nextDate = date;
+              if (dayOffset && date) {
+                const shiftedDate = new Date(`${date}T12:00:00`);
+                shiftedDate.setDate(shiftedDate.getDate() + dayOffset);
+                nextDate = localDateValue(shiftedDate);
+                setDate(nextDate);
+              }
               if (kind === 'sleep' && sleepEnd) {
-                changeSleepTime(nextTime, sleepEnd);
+                changeSleepTime(nextTime, sleepEnd, nextDate);
               } else {
                 markDirty();
                 setTime(nextTime);
-                if (kind === 'sleep') setSleepEnd(sleepEndFromDuration(date, nextTime, sleepMinutes)?.time ?? '');
+                if (kind === 'sleep') setSleepEnd(sleepEndFromDuration(nextDate, nextTime, sleepMinutes)?.time ?? '');
               }
             }} /></span>
           </div>
@@ -1196,7 +1200,8 @@ function App() {
                 <article id={`activity-${activity.id}`} className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0}
                   aria-label={[tr(language, activity.kind), summary, note, timeLabel].filter(Boolean).join(' · ')}
                   onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
-                  <ActivityIcon kind={activity.kind} emoji recent />
+                  <ActivityIcon kind={activity.kind} emoji recent
+                    diaperState={activity.kind === 'diaper' ? readDiaperState(activity.detail) : undefined} />
                   {nextDay === day && <span className="timeline-line"/>}
                   <div className="activity-copy activity-summary">
                     <div className="activity-description">

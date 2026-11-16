@@ -1,11 +1,13 @@
 import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
-import { Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from './ui/dialog';
 
 const pad = value => String(value).padStart(2, '0');
 const hours = Array.from({ length: 24 }, (_, index) => pad(index));
 const minutes = Array.from({ length: 12 }, (_, index) => pad(index * 5));
+const STEP_MINUTES = 10;
+const MINUTES_PER_DAY = 24 * 60;
 
 function TimeColumn({ label, options, value, onChange }) {
   const list = useRef(null);
@@ -68,12 +70,31 @@ export function TimeInput({ value, onChange, required, language, label }) {
     setOpen(false);
   }
 
+  function step(direction) {
+    if (!value) return;
+    const [currentHour, currentMinute] = value.split(':').map(Number);
+    const total = currentHour * 60 + currentMinute + direction * STEP_MINUTES;
+    const dayOffset = Math.floor(total / MINUTES_PER_DAY);
+    const next = total - dayOffset * MINUTES_PER_DAY;
+    onChange(`${pad(Math.floor(next / 60))}:${pad(next % 60)}`, dayOffset);
+  }
+
   return <Dialog open={open} onOpenChange={changeOpen}>
-    <DialogTrigger asChild>
-      <button type="button" className="clock-input" aria-label={`${label} ${value || 'HH:MM'}`}>
-        {value || 'HH:MM'} <Clock size={16} aria-hidden="true" />
+    <span className="field-stepper">
+      <button type="button" className="field-stepper-button" disabled={!value} onClick={() => step(-1)}
+        aria-label={zh ? `${label}减少 10 分钟` : `Move ${label.toLowerCase()} 10 minutes earlier`}>
+        <ChevronLeft size={20} aria-hidden="true" />
       </button>
-    </DialogTrigger>
+      <DialogTrigger asChild>
+        <button type="button" className="clock-input" aria-label={`${label} ${value || 'HH:MM'}`}>
+          {value || 'HH:MM'} <Clock size={16} aria-hidden="true" />
+        </button>
+      </DialogTrigger>
+      <button type="button" className="field-stepper-button" disabled={!value} onClick={() => step(1)}
+        aria-label={zh ? `${label}增加 10 分钟` : `Move ${label.toLowerCase()} 10 minutes later`}>
+        <ChevronRight size={20} aria-hidden="true" />
+      </button>
+    </span>
     <DialogContent className="clock-picker-dialog" aria-describedby={undefined}>
       <DialogTitle className="sr-only">{label}</DialogTitle>
       <div className="clock-picker-options">
