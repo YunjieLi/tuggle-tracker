@@ -1,3 +1,4 @@
+import { startForegroundSync } from './foregroundSync';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 
@@ -99,17 +100,12 @@ export function useFeedbackItems(userId) {
       window.clearTimeout(timer);
       timer = window.setTimeout(sync, 350);
     };
-    sync();
-    const interval = window.setInterval(sync, 10_000);
-    window.addEventListener('focus', sync);
-    document.addEventListener('visibilitychange', sync);
+    const stop = startForegroundSync(sync, { shouldRefresh: () => !syncing });
     return () => {
       active = false;
       scheduleSync.current = null;
       window.clearTimeout(timer);
-      window.clearInterval(interval);
-      window.removeEventListener('focus', sync);
-      document.removeEventListener('visibilitychange', sync);
+      stop();
     };
   }, [cloud, legacy, legacyKey, queueKey, userId]);
 

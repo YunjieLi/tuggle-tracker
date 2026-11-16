@@ -1,5 +1,6 @@
+import { startForegroundSync } from '../lib/foregroundSync';
 import { formatAppDate } from '../lib/dates';
-import React, { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Baby, Camera, ChartLine, ChevronLeft, Plus } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -165,28 +166,43 @@ export function GrowthChart({ language, userId }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const mutation = useRef({ revision: 0, saving: false });
+
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
+    const { signal } = controller;
+
     async function load() {
+      const revision = mutation.current.revision;
+      const isCurrent = () => !signal.aborted && revision === mutation.current.revision;
       try {
         const { data, error: failure } = supabase
-          ? await supabase.from('baby_growth_records').select('id, measured_on, weight_kg, length_cm, head_cm').eq('user_id', userId).order('measured_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })
+          ? await supabase.from('baby_growth_records').select('id, measured_on, weight_kg, length_cm, head_cm')
+            .eq('user_id', userId).order('measured_on', { ascending: false, nullsFirst: false })
+            .order('created_at', { ascending: false }).abortSignal(signal)
           : { data: JSON.parse(localStorage.getItem(storageKey) || '[]') };
         if (failure) throw failure;
-        if (active) setRecords(data);
+        if (isCurrent()) {
+          setRecords(data);
+          setError(previous => previous === 'load' ? null : previous);
+        }
       } catch {
-        if (active) setError('load');
+        if (isCurrent()) setError('load');
       } finally {
-        if (active) setLoading(false);
+        if (!signal.aborted) setLoading(false);
       }
     }
-    load();
-    return () => { active = false; };
+    const stop = supabase ? startForegroundSync(load, { shouldRefresh: () => !mutation.current.saving }) : null;
+    if (!supabase) load();
+    return () => {
+      stop?.();
+      controller.abort();
+    };
   }, [userId]);
 
   async function save(event) {
     event.preventDefault();
-    if (saving) return;
+    if (mutation.current.saving) return;
     const form = new FormData(event.currentTarget);
     const values = { measured_on: form.get('measured_on') || null };
     for (const [key] of fields) {
@@ -207,6 +223,8 @@ export function GrowthChart({ language, userId }) {
 
     const record = { id: editing.id || crypto.randomUUID(), ...values };
     const isUpdate = Boolean(editing.id);
+    mutation.current.revision += 1;
+    mutation.current.saving = true;
     setSaving(true);
     setError(null);
     try {
@@ -226,6 +244,7 @@ export function GrowthChart({ language, userId }) {
     } catch {
       setError('save');
     } finally {
+      mutation.current.saving = false;
       setSaving(false);
     }
   }
