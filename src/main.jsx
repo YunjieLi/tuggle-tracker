@@ -5,6 +5,7 @@ import { formatAppDate, formatRecordTime, localDateValue } from './lib/dates';
 import { baby } from './lib/growth';
 import { BabyProfile, GrowthChart } from './components/BabyPages';
 import { FeedingReport } from './components/FeedingReport';
+import { FeedAlert } from './components/FeedAlert';
 import { ACTIVITY_PAGE_SIZE, fetchActivityPage } from './lib/activityQueries';
 import { ReleaseNotice } from './components/ReleaseNotice';
 import { InstallApp } from './components/InstallApp';
@@ -1191,6 +1192,7 @@ function App() {
               const nextDay = index < visibleActivities.length - 1 ? localDateValue(new Date(visibleActivities[index + 1].at)) : null;
               return <React.Fragment key={activity.id}>
                 {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day, language, undefined, { showWeekday: true })}</span></div>}
+                {day !== previousDay && day === localDateValue() && <FeedAlert feeds={feedHistory} language={language} />}
                 <article id={`activity-${activity.id}`} className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0}
                   aria-label={[tr(language, activity.kind), summary, note, timeLabel].filter(Boolean).join(' · ')}
                   onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>
