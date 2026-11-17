@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { ageInDays, baby, percentile, referenceMaxDay, referenceMeasurement } from '../lib/growth';
 import { supabase } from '../lib/supabase';
+import { measurementFromBase, measurementToBase } from '../lib/growthUnits';
 
 const storageKey = 'little-days.growth-records';
 const fields = [
@@ -14,7 +15,6 @@ const fields = [
   ['head_cm', 'Head circumference', '头围', 'cm'],
 ];
 
-const unitFactors = { kg: 1, lb: 0.45359237, cm: 1, inch: 2.54 };
 
 function MeasurementDateInput({ zh, initialDate }) {
   const [date, setDate] = useState(initialDate);
@@ -29,20 +29,45 @@ function MeasurementDateInput({ zh, initialDate }) {
 function MeasurementInput({ field, zh, value }) {
   const [key, en, cn, baseUnit] = field;
   const [unit, setUnit] = useState(baseUnit);
+  const [baseValue, setBaseValue] = useState(() => value == null ? null : Number(value));
+  const [input, setInput] = useState(() => String(value ?? ''));
+  const [secondary, setSecondary] = useState('');
+  function changeUnit(nextUnit) {
+    const converted = measurementFromBase(baseValue, nextUnit);
+    setInput(converted.value);
+    setSecondary(converted.secondary);
+    setUnit(nextUnit);
+  }
   const label = zh ? cn : en;
-  const mixed = unit === 'lb+oz';
-  const units = baseUnit === 'kg' ? ['kg', 'lb', 'lb+oz'] : ['cm', 'inch'];
+  const mixed = unit === 'lb+oz' || unit === 'ft+inch';
+  const feet = unit === 'ft+inch';
+  const primaryLabel = feet ? 'ft' : 'lb';
+  const secondaryLabel = feet ? 'inch' : 'oz';
+  const units = baseUnit === 'kg' ? ['kg', 'lb', 'lb+oz'] : key === 'length_cm' ? ['cm', 'inch', 'ft+inch'] : ['cm', 'inch'];
   return <div className="growth-measurement">
+    <input type="hidden" name={key + '_base'} value={baseValue ?? ''} />
     <label htmlFor={key}>{label}</label>
     <div className="growth-measurement-inputs">
       <div className="growth-unit-field">
-        <input id={key} name={key} defaultValue={value ?? ''} type="number" inputMode={mixed ? 'numeric' : 'decimal'} min={mixed ? '0' : '0.01'} step={mixed ? '1' : 'any'} />
-        {mixed && <span aria-hidden="true" className="measurement-unit">lb</span>}
-        <select name={key + '_unit'} aria-label={label + (zh ? '单位' : ' unit')} value={unit} onChange={event => setUnit(event.target.value)}>
+        <input id={key} name={key} value={input} onChange={event => {
+          const next = event.target.value;
+          setInput(next);
+          setBaseValue(measurementToBase(next, unit, secondary));
+        }} type="number" inputMode={mixed ? 'numeric' : 'decimal'} min={mixed ? '0' : '0.01'} step={mixed ? '1' : 'any'} />
+        {mixed && <span aria-hidden="true" className="measurement-unit">{primaryLabel}</span>}
+        {mixed && <>
+          <input name={key + '_secondary'} value={secondary} onChange={event => {
+            const next = event.target.value;
+            setSecondary(next);
+            setBaseValue(measurementToBase(input, unit, next));
+          }} aria-label={feet ? (zh ? '身长／身高（英寸）' : 'Length / height (inches)') : (zh ? '体重（盎司）' : 'Weight (oz)')}
+            type="number" inputMode="decimal" min="0" max={feet ? '11.999999999' : '15.999999999'} step="any" />
+          <span aria-hidden="true" className="measurement-unit">{secondaryLabel}</span>
+        </>}
+        <select name={key + '_unit'} aria-label={label + (zh ? '单位' : ' unit')} value={unit} onChange={event => changeUnit(event.target.value)}>
           {units.map(option => <option key={option}>{option}</option>)}
         </select>
       </div>
-      {mixed && <div className="growth-unit-field"><input name="weight_oz" aria-label={zh ? '体重（盎司）' : 'Weight (oz)'} type="number" inputMode="decimal" min="0" max="15.999999" step="any" /><span aria-hidden="true" className="measurement-unit">oz</span></div>}
     </div>
   </div>;
 }
@@ -206,15 +231,13 @@ export function GrowthChart({ language, userId }) {
     const form = new FormData(event.currentTarget);
     const values = { measured_on: form.get('measured_on') || null };
     for (const [key] of fields) {
-      const unit = form.get(key + '_unit');
-      const input = form.get(key);
-      const ounces = unit === 'lb+oz' ? form.get('weight_oz') : '';
-      const value = unit === 'lb+oz' ? Number(input) + Number(ounces) / 16 : Number(input);
-      if ((input || ounces) && (!Number.isFinite(value) || value <= 0)) {
+      const input = form.get(key + '_base');
+      const value = input === '' ? null : Number(input);
+      if (value !== null && (!Number.isFinite(value) || value <= 0)) {
         setError('invalid');
         return;
       }
-      values[key] = input || ounces ? value * unitFactors[unit === 'lb+oz' ? 'lb' : unit] : null;
+      values[key] = value;
     }
     if (fields.every(([key]) => values[key] === null)) {
       setError('empty');
