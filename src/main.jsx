@@ -17,7 +17,7 @@ import { createRoot } from 'react-dom/client';
 import { Baby, Check, ChevronLeft, ChevronRight, CircleX, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves, X } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
-import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
+import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, isUsernameConnectionError, signInWithUsername, supabase } from './lib/supabase';
 import './styles.css';
 
 const appUpdatedAt = document.querySelector('meta[name="app-updated-at"]')?.content;
@@ -890,11 +890,48 @@ function App() {
       setAccountUsername('');
       return undefined;
     }
-    let active = true;
-    getSignedInUsername()
-      .then(username => { if (active) setAccountUsername(username || ''); })
-      .catch(error => { if (active) setToast(`${tr(language, 'loadNameFailed')}: ${error.message}`); });
-    return () => { active = false; };
+    const controller = new AbortController();
+    const { signal } = controller;
+    const retryDelays = [1000, 3000];
+    let retryTimer;
+    let running = false;
+    let settled = false;
+
+    async function loadUsername(attempt = 0) {
+      if (running || settled || signal.aborted) return;
+      running = true;
+      try {
+        const username = await getSignedInUsername({ signal });
+        if (signal.aborted) return;
+        settled = true;
+        setAccountUsername(username || '');
+      } catch (error) {
+        if (signal.aborted) return;
+        if (!isUsernameConnectionError(error)) {
+          settled = true;
+          setToast(`${tr(language, 'loadNameFailed')}: ${error.message}`);
+        } else if (attempt < retryDelays.length) {
+          retryTimer = window.setTimeout(() => loadUsername(attempt + 1), retryDelays[attempt]);
+        } else {
+          console.warn('Could not load account name after retrying:', error.message);
+        }
+      } finally {
+        running = false;
+      }
+    }
+
+    function onOnline() {
+      window.clearTimeout(retryTimer);
+      loadUsername();
+    }
+
+    loadUsername();
+    window.addEventListener('online', onOnline);
+    return () => {
+      controller.abort();
+      window.clearTimeout(retryTimer);
+      window.removeEventListener('online', onOnline);
+    };
   }, [user]);
   const feedHistory = useMemo(() => {
     const byId = new Map(olderFeeds.map(feed => [feed.id, feed]));

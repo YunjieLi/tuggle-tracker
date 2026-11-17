@@ -33,7 +33,7 @@ export function FeedAlert({ feeds, language }) {
   return <p className="feed-alert event-feed">
     <Clock size={17} aria-hidden="true" />
     <span>{language === 'zh' ? <>
-      距离上次喂奶 <strong>{elapsed}</strong>，{reached ? '已满三小时。' : <><strong>{time}</strong> 将满三小时。</>}
+      距离上顿 <strong>{elapsed}</strong>，{reached ? '已满三小时。' : <><strong>{time}</strong> 将满三小时。</>}
     </> : <>
       Last fed <strong>{elapsed}</strong> ago. {reached ? 'Three hours have passed.' : <>Three hours at <strong>{time}</strong>.</>}
     </>}</span>

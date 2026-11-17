@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, FunctionsFetchError, FunctionsRelayError } from '@supabase/supabase-js';
 import { rememberDeviceUse } from './deviceSession';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -44,14 +44,19 @@ export function signUpWithUsername(username, password) {
   return usernameAuth('sign-up', { username, password });
 }
 
-export async function getSignedInUsername() {
+export function isUsernameConnectionError(error) {
+  return error instanceof FunctionsFetchError || error instanceof FunctionsRelayError;
+}
+
+export async function getSignedInUsername({ signal } = {}) {
   if (!supabase) throw new Error('Supabase is not configured.');
   const functionsJwt = import.meta.env.VITE_SUPABASE_FUNCTIONS_JWT;
   if (!functionsJwt) throw new Error('Username lookup is not configured.');
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (!accessToken) return null;
+  if (!accessToken || signal?.aborted) return null;
   const { data, error } = await supabase.functions.invoke('auth-by-username', {
+    signal,
     body: { action: 'get-username' },
     headers: {
       Authorization: `Bearer ${functionsJwt}`,

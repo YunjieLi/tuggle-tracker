@@ -371,7 +371,7 @@ button { cursor: pointer; }
   border-radius: 12px;
   background: var(--event-soft);
   color: var(--event-color);
-  font-size: .875rem;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
 }
 .feed-alert svg { flex: none; }
