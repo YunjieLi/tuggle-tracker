@@ -128,7 +128,7 @@ function GrowthPlot({ records, language, standard, metric }) {
           return segments.map(([start, end]) => {
             const edge = values => days.slice(start, end).map((day, i) => `${x(day)},${y(values[start + i])}`);
             return <polygon key={`${index}-${start}`} points={[...edge(top), ...edge(bottom).reverse()].join(' ')}
-              fill="#e7ddf8" stroke="white" strokeWidth="1" />;
+              fill="#e7ddf8" stroke="var(--divider)" strokeWidth="1" />;
           });
         })}
       </g>

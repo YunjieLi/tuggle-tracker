@@ -1,4 +1,5 @@
 import { startForegroundSync } from './lib/foregroundSync';
+import { useScrollNavigation } from './lib/useScrollNavigation';
 import { TimeInput } from './components/TimeInput';
 import { sleepEndFromDuration, sleepMinutesBetween } from './lib/sleepTime';
 import { formatAppDate, formatRecordTime, localDateValue } from './lib/dates';
@@ -652,6 +653,8 @@ function App() {
   const [profilePicture, setProfilePicture] = useState('');
   const [cropSource, setCropSource] = useState('');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const topbarRef = useRef(null);
+  const topbarHidden = useScrollNavigation(topbarRef, page, accountMenuOpen);
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [activeKind, setActiveKind] = useState(null);
   const [editingActivity, setEditingActivity] = useState(null);
@@ -1090,7 +1093,8 @@ function App() {
   if (isSupabaseConfigured && !user) return <AuthPanel language={language} />;
 
   return <div className="app-shell">
-    <header className="topbar">
+    {topbarHidden && <div className="topbar-tap-zone" aria-hidden="true" />}
+    <header ref={topbarRef} className="topbar" data-hidden={topbarHidden}>
       <a className="profile-identity" href="#top">
         {profilePicture ? <img className="profile-photo" src={profilePicture} alt="" /> : <span className="baby-avatar" aria-hidden="true"><Baby size={20} /></span>}
         <span className="profile-name">{user?.user_metadata?.username || baby.name}</span>
