@@ -17,7 +17,7 @@ import { createRoot } from 'react-dom/client';
 import { Baby, Check, ChevronLeft, ChevronRight, CircleX, Droplets, Eye, EyeOff, Menu, Milk, Moon, Pencil, Plus, Sparkles, Waves, X } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './components/ui/dialog';
-import { activityFromRow, activityToRow, getSignedInUsername, isSupabaseConfigured, isUsernameConnectionError, signInWithUsername, supabase } from './lib/supabase';
+import { activityFromRow, activityToRow, isSupabaseConfigured, signInWithUsername, supabase } from './lib/supabase';
 import './styles.css';
 
 const appUpdatedAt = document.querySelector('meta[name="app-updated-at"]')?.content;
@@ -45,8 +45,8 @@ const DEFAULT_QUICK_ACTIONS = ['feed', 'diaper', 'activity'];
 const DEFAULT_ACTIVITY_NAMES = ['洗澡', '散步', '内耳前庭'];
 const quickActionEmoji = { feed: '🍼', pump: '⛽️', diaper: '💩', sleep: '💤', activity: '🌸' };
 const translations = {
-  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', activity: 'Activity', activityContent: 'Content', recentActivityNames: 'Recent activity names', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', feedingMethods: 'Feeding methods', directNursing: 'Direct breastfeeding', bottledBreastmilk: 'Bottled breast milk', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Babji tracker home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', wet: 'Pee', poop: 'Poop', duration: 'Duration', sleepStart: 'Start time', sleepEnd: 'End time', note: 'Note', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', showPassword: 'Show password', hidePassword: 'Hide password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', loadNameFailed: 'Could not load account name', updated: 'updated', logged: 'logged' },
-  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', activity: '活动', activityContent: '内容', recentActivityNames: '最近使用的活动名称', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', feedingMethods: '喂养方式', directNursing: '母乳亲喂', bottledBreastmilk: '母乳瓶喂', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Babji tracker 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', wet: '尿尿', poop: '臭臭', duration: '时长', sleepStart: '开始时间', sleepEnd: '结束时间', note: '备注', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', showPassword: '显示密码', hidePassword: '隐藏密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', loadNameFailed: '无法加载账户名称', updated: '已更新', logged: '已记录' },
+  en: { feed: 'Feed', pump: 'Pump', diaper: 'Diaper', sleep: 'Sleep', activity: 'Activity', activityContent: 'Content', recentActivityNames: 'Recent activity names', fed: 'Fed', pumped: 'Pumped', changedDiaper: 'Changed diaper', edit: 'Edit', log: 'Log', time: 'Time', date: 'Date', accountMenu: 'Account menu', settings: 'Settings', feedingMethods: 'Feeding methods', directNursing: 'Direct breastfeeding', bottledBreastmilk: 'Bottled breast milk', profilePicture: 'Change profile picture', dragToCrop: 'Drag to position, then adjust the zoom.', zoom: 'Zoom', usePhoto: 'Use photo', home: 'Babji tracker home', formula: 'Formula', breastmilk: 'Breastmilk', breastfeeding: 'Breastfeeding', amount: 'Amount', wet: 'Pee', poop: 'Poop', duration: 'Duration', sleepStart: 'Start time', sleepEnd: 'End time', note: 'Note', autoSaveHint: 'Changes save automatically', cancel: 'Cancel', save: 'Save', delete: 'Delete', customize: 'Quick actions', language: 'Language', english: 'English', chinese: '中文', signOut: 'Sign out', feedingRecords: 'Feeding records', quickActions: 'Quick actions', recentActivity: 'Recent activity', today: 'Today', yesterday: 'Yesterday', noActivity: 'No activity yet', justNow: 'Just now', minAgo: 'min ago', hrAgo: 'hr ago', hrsAgo: 'hrs ago', ml: 'ml', decrease: 'Decrease', increase: 'Increase', amountInMl: 'in ml', addFeedAmount: 'Add at least one amount to save this feed.', loading: 'Loading…', signIn: 'Sign in', name: 'Name', password: 'Password', showPassword: 'Show password', hidePassword: 'Hide password', wait: 'Please wait…', saveFailed: 'Save failed', deleteFailed: 'Delete failed', loadActivitiesFailed: 'Could not load activities', updated: 'updated', logged: 'logged' },
+  zh: { feed: '喂奶', pump: '泵奶', diaper: '尿布', sleep: '睡觉', activity: '活动', activityContent: '内容', recentActivityNames: '最近使用的活动名称', edit: '编辑', log: '记录', time: '时间', date: '日期', accountMenu: '账户菜单', settings: '设置', feedingMethods: '喂养方式', directNursing: '母乳亲喂', bottledBreastmilk: '母乳瓶喂', profilePicture: '更换头像', dragToCrop: '拖动图片调整位置，再调整缩放。', zoom: '缩放', usePhoto: '使用头像', home: 'Babji tracker 首页', formula: '配方奶', breastmilk: '母乳', breastfeeding: '亲喂', amount: '奶量', wet: '尿尿', poop: '臭臭', duration: '时长', sleepStart: '开始时间', sleepEnd: '结束时间', note: '备注', autoSaveHint: '修改会自动保存', cancel: '取消', save: '保存', delete: '删除', customize: '快捷操作', language: '语言', english: 'English', chinese: '中文', signOut: '退出登录', feedingRecords: '喂养记录', quickActions: '快捷操作', recentActivity: '最近记录', today: '今天', yesterday: '昨天', noActivity: '暂无记录', justNow: '刚刚', minAgo: '分钟前', hrAgo: '小时前', hrsAgo: '小时前', ml: 'ml', decrease: '减少', increase: '增加', amountInMl: '单位：ml', addFeedAmount: '请填写至少一种奶量。', loading: '正在加载…', signIn: '登录', name: '姓名', password: '密码', showPassword: '显示密码', hidePassword: '隐藏密码', wait: '请稍候…', saveFailed: '保存失败', deleteFailed: '删除失败', loadActivitiesFailed: '无法加载记录', updated: '已更新', logged: '已记录' },
 };
 const tr = (language, key) => translations[language]?.[key] ?? translations.en[key] ?? key;
 const kinds = {
@@ -649,7 +649,6 @@ function App() {
   const [user, setUser] = useState(null);
   const userId = user?.id;
   const currentReport = report?.userId === userId ? report : null;
-  const [accountUsername, setAccountUsername] = useState('');
   const [profilePicture, setProfilePicture] = useState('');
   const [cropSource, setCropSource] = useState('');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -885,54 +884,6 @@ function App() {
       controller.abort();
     };
   }, [page, userId, reportRevision]);
-  useEffect(() => {
-    if (!supabase || !user) {
-      setAccountUsername('');
-      return undefined;
-    }
-    const controller = new AbortController();
-    const { signal } = controller;
-    const retryDelays = [1000, 3000];
-    let retryTimer;
-    let running = false;
-    let settled = false;
-
-    async function loadUsername(attempt = 0) {
-      if (running || settled || signal.aborted) return;
-      running = true;
-      try {
-        const username = await getSignedInUsername({ signal });
-        if (signal.aborted) return;
-        settled = true;
-        setAccountUsername(username || '');
-      } catch (error) {
-        if (signal.aborted) return;
-        if (!isUsernameConnectionError(error)) {
-          settled = true;
-          setToast(`${tr(language, 'loadNameFailed')}: ${error.message}`);
-        } else if (attempt < retryDelays.length) {
-          retryTimer = window.setTimeout(() => loadUsername(attempt + 1), retryDelays[attempt]);
-        } else {
-          console.warn('Could not load account name after retrying:', error.message);
-        }
-      } finally {
-        running = false;
-      }
-    }
-
-    function onOnline() {
-      window.clearTimeout(retryTimer);
-      loadUsername();
-    }
-
-    loadUsername();
-    window.addEventListener('online', onOnline);
-    return () => {
-      controller.abort();
-      window.clearTimeout(retryTimer);
-      window.removeEventListener('online', onOnline);
-    };
-  }, [user]);
   const feedHistory = useMemo(() => {
     const byId = new Map(olderFeeds.map(feed => [feed.id, feed]));
     for (const item of activities) {
@@ -1142,7 +1093,7 @@ function App() {
     <header className="topbar">
       <a className="profile-identity" href="#top">
         {profilePicture ? <img className="profile-photo" src={profilePicture} alt="" /> : <span className="baby-avatar" aria-hidden="true"><Baby size={20} /></span>}
-        <span className="profile-name">{accountUsername || user?.user_metadata?.username || baby.name}</span>
+        <span className="profile-name">{user?.user_metadata?.username || baby.name}</span>
       </a>
       <div className="account-menu" ref={accountMenuRef}>
         <button type="button" className="account-trigger" aria-label={tr(language, 'accountMenu')} aria-expanded={accountMenuOpen} onClick={() => setAccountMenuOpen(open => !open)}>
@@ -1213,7 +1164,7 @@ function App() {
         <div className="quick-grid">
           {Object.keys(kinds).filter(kind => quickActions.includes(kind)).map(kind => (
             <Button key={kind} className={`quick-action event-${kind}`} aria-label={tr(language, kind)} onClick={() => createActivity(kind)}>
-              <Plus size={17} aria-hidden="true" />
+              <Plus size={20} aria-hidden="true" />
               <span aria-hidden="true">{quickActionEmoji[kind]}</span>
             </Button>
           ))}

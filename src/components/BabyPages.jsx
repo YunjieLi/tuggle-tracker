@@ -118,7 +118,7 @@ function GrowthPlot({ records, language, standard, metric }) {
   const y = value => 214 - (value - lower) / (upper - lower) * 187;
   const plotTitle = zh ? `${standard} 女童生长曲线` : `${standard} girls’ growth chart`;
   const split = standard === 'WHO' && metric === 'length_cm' ? days.indexOf(731) : -1;
-  return <section className="baby-panel">
+  return <section className="baby-panel growth-plot-panel">
     <svg viewBox="0 0 421 260" className="growth-plot" role="img" aria-label={`${plotTitle} · ${label} (${unit}) · P10–P100`}>
       <defs><clipPath id={clipId}><rect x="47" y="27" width="337" height="187" /></clipPath></defs>
       <g clipPath={`url(#${clipId})`}>
