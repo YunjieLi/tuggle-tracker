@@ -537,6 +537,13 @@ function ActivityDialog({ kind, activity, open, onOpenChange, onSave, onDelete, 
           </div>
         </>}
         <label>{tr(language, 'note')}<input value={note} onChange={e => { markDirty(); setNote(e.target.value); }} /></label>
+        {kind === 'feed' && <div className="activity-name-chips feed-note-chips" role="group"
+          aria-label={language === 'zh' ? '快捷备注' : 'Quick notes'}>
+          <Button variant="outline" size="sm" onClick={() => {
+            markDirty();
+            setNote(current => /\bD3\b/i.test(current) ? current : [current.trim(), 'D3'].filter(Boolean).join(' '));
+          }}>D3</Button>
+        </div>}
         <DialogFooter>
           {activity ? <>
             <Button variant="ghost" className="delete-record" onClick={() => onDelete(activity.id)}>{tr(language, 'delete')}</Button>
@@ -1188,7 +1195,7 @@ function App() {
               const nextDay = index < visibleActivities.length - 1 ? localDateValue(new Date(visibleActivities[index + 1].at)) : null;
               return <React.Fragment key={activity.id}>
                 {day !== previousDay && <div className="activity-day-divider" role="separator"><span>{formatAppDate(day, language, undefined, { showWeekday: true })}</span></div>}
-                {day !== previousDay && day === localDateValue() && <FeedAlert feeds={feedHistory} language={language} />}
+                {index === 0 && <FeedAlert feeds={feedHistory} language={language} />}
                 <article id={`activity-${activity.id}`} className={`activity-row${nextDay !== day ? ' activity-group-end' : ''}`} role="button" tabIndex={0}
                   aria-label={[tr(language, activity.kind), summary, note, timeLabel].filter(Boolean).join(' · ')}
                   onClick={() => setEditingActivity(activity)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEditingActivity(activity); } }}>

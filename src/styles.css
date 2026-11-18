@@ -166,6 +166,7 @@ button { cursor: pointer; }
 .activity-name-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0 40%; }
 .activity-name-chips > .ui-button { display: block; min-width: 0; max-width: 100%; min-height: 0; padding: 4px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; border-radius: 999px; background: #eeeded; color: #686770; font-size: 14px; font-weight: 500; line-height: 20px; }
 .activity-name-chips > .ui-button:hover { background: #e4e3e3; }
+.feed-note-chips { margin-top: -7px; }
 .time-field-group { display: flex; flex-direction: column; gap: 2px; }
 .time-picker-row {
   display: grid;
@@ -384,7 +385,7 @@ button { cursor: pointer; }
 .page-title, .section-heading .page-title { margin: 0; font: 800 24px/1.3 Manrope, sans-serif; letter-spacing: -.45px; }
 .feed-alert {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin: 12px 0 8px;
   padding: 10px 12px;
@@ -392,9 +393,10 @@ button { cursor: pointer; }
   background: var(--event-soft);
   color: var(--event-color);
   font-size: 18px;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }
-.feed-alert svg { flex: none; }
+.feed-alert svg { flex: none; margin-top: 5px; }
 .feed-alert strong { white-space: nowrap; }
 .baby-page h2 { font-size: 1rem; font-weight: 700; }
 .baby-page > button { justify-self: start; }
@@ -662,3 +664,10 @@ body {
     linear-gradient(-45deg, transparent 43%, currentColor 43% 57%, transparent 57%);
 }
 .feeding-time-track .feeding-time-night-marker { color: #59418a; }
+.feeding-time-track .feeding-time-now {
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}

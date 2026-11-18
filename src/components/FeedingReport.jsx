@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BabyPage } from './BabyPages';
 import { localDateValue } from '../lib/dates';
 
@@ -111,8 +111,22 @@ const axisTicks = Array.from({ length: DAY_MINUTES / AXIS_STEP_MINUTES + 1 }, (_
 function FeedingTimes({ language, activities, loading, error }) {
   const chartRef = useRef(null);
   const zh = language === 'zh';
-  const currentColumn = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const update = () => setNow(new Date());
+    const timer = window.setInterval(update, 1000);
+    document.addEventListener('visibilitychange', update);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', update);
+    };
+  }, []);
+  const currentColumn = new Date(now);
   if (currentColumn.getHours() < CHART_START_HOUR) currentColumn.setDate(currentColumn.getDate() - 1);
+  const currentDate = localDateValue(currentColumn);
+  const currentMinute = now.getHours() * 60 + now.getMinutes();
+  const currentOffset = (currentMinute - CHART_START_MINUTE + DAY_MINUTES) % DAY_MINUTES;
+  const currentIsNight = now.getHours() >= 20 || now.getHours() < 8;
   const days = recentDays(currentColumn, HISTORY_DAYS);
   for (const activity of activities) {
     if (activity.kind !== 'feed') continue;
@@ -125,7 +139,7 @@ function FeedingTimes({ language, activities, loading, error }) {
   const showChart = !error && !loading && hasRecords;
   useLayoutEffect(() => {
     if (chartRef.current) chartRef.current.scrollLeft = chartRef.current.scrollWidth;
-  }, [showChart]);
+  }, [showChart, currentDate]);
 
   return <section className="baby-panel feeding-report" aria-labelledby="feeding-times-heading">
     <div className="feeding-report-header">
@@ -151,7 +165,7 @@ function FeedingTimes({ language, activities, loading, error }) {
                   return minute < DAY_MINUTES ? time : (zh ? `次日 ${time}` : `Next day ${time}`);
                 });
                 return <div className="feeding-chart-day" key={date} role="img"
-                  aria-label={`${label}: ${times.join(', ') || (zh ? '无记录' : 'No records')}`}
+                  aria-label={`${label}: ${times.join(', ') || (zh ? '无记录' : 'No records')}${date === currentDate ? `, ${zh ? '当前时间' : 'Current time'} ${clockLabel(currentMinute)}` : ''}`}
                   title={times.join(', ') || undefined}>
                   <div className="feeding-time-track" aria-hidden="true">
                     {feedTimes.map((offset, index) => {
@@ -160,6 +174,9 @@ function FeedingTimes({ language, activities, loading, error }) {
                       return <i key={index} className={isNight ? 'feeding-time-night-marker' : undefined}
                         style={{ top: `${offset / DAY_MINUTES * 100}%` }} />;
                     })}
+                    {date === currentDate && <i
+                      className={`feeding-time-now${currentIsNight ? ' feeding-time-night-marker' : ''}`}
+                      style={{ top: `${currentOffset / DAY_MINUTES * 100}%` }} />}
                   </div>
                   <time dateTime={date} aria-hidden="true">{label}</time>
                 </div>;

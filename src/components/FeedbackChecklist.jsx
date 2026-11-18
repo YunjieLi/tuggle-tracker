@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useFeedbackItems } from '../lib/useFeedbackItems';
+import { BabyPage } from './BabyPages';
 
 const labels = {
   zh: { title: '报反馈', newItem: '添加', delete: '删除', completed: '已完成', saveFailed: '反馈同步失败，将自动重试。' },
@@ -73,8 +74,7 @@ export function FeedbackChecklist({ language, userId }) {
       onDelete={() => saveItem(item.id, null)} />);
   }
 
-  return <main className="page-wrap feedback-page">
-    <h1 className="page-title">{copy.title}</h1>
+  return <BabyPage title={copy.title} language={language}>
     <section className="baby-panel" aria-label={copy.title}>
       <ul className="feedback-items">
         <li className="feedback-row feedback-draft" onBlur={event => {
@@ -99,5 +99,5 @@ export function FeedbackChecklist({ language, userId }) {
       <summary>{copy.completed}</summary>
       <ul className="feedback-items">{renderItems(completedItems)}</ul>
     </details>}
-  </main>;
+  </BabyPage>;
 }
